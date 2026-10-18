@@ -2,15 +2,22 @@
 import { CATEGORIES, MENU_ITEMS, RESTAURANT_INFO } from '../data/defaultMenu';
 import { parseVerificationFromOrder } from '../utils/locationHelper';
 
+const RENDER_PROD_URL = 'https://malai-chaap-junction.onrender.com/api';
+
 const API_BASE_URL = import.meta.env.VITE_API_URL || 
-  (typeof window !== 'undefined' ? '/api' : 'http://localhost:8080/api');
+  (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+    ? 'http://localhost:8080/api'
+    : RENDER_PROD_URL);
 
 function getApiUrl(endpoint = '') {
   const clean = endpoint ? (endpoint.startsWith('/') ? endpoint : `/${endpoint}`) : '';
-  if (API_BASE_URL.startsWith('/') && typeof window !== 'undefined') {
-    return `${window.location.origin}${API_BASE_URL}${clean}`;
+  if (API_BASE_URL.startsWith('http://') || API_BASE_URL.startsWith('https://')) {
+    return `${API_BASE_URL.replace(/\/+$/, '')}${clean}`;
   }
-  return `${API_BASE_URL}${clean}`;
+  if (typeof window !== 'undefined') {
+    return `${window.location.origin}${API_BASE_URL.startsWith('/') ? API_BASE_URL : '/' + API_BASE_URL}${clean}`;
+  }
+  return `${RENDER_PROD_URL}${clean}`;
 }
 
 // Helper to normalize item properties between Spring Boot JPA entity and React frontend
@@ -358,8 +365,8 @@ export const restaurantApi = {
       if (status && status !== 'ALL') {
         url.searchParams.append('status', status);
       }
-      const res = await fetch(url.toString());
-      if (!res.ok) throw new Error('Network error');
+      const res = await fetch(url.toString(), { cache: 'no-store' });
+      if (!res.ok) throw new Error('Network error HTTP ' + res.status);
       const data = await res.json();
       return (Array.isArray(data) ? data : []).map(order => {
         const verify = parseVerificationFromOrder(order);
