@@ -50,7 +50,7 @@ public class AdminController {
         }
 
         response.put("success", false);
-        response.put("message", "Galat username/password ya PIN. Username: admin, Password: malai@2026 ya PIN: 1234");
+        response.put("message", "Galat username/password ya PIN. Kripya sahi credentials enter karein.");
         return ResponseEntity.status(401).body(response);
     }
 
