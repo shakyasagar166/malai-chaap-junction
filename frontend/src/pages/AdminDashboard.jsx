@@ -1288,37 +1288,50 @@ export default function AdminDashboard({ onNavigateToMenu }) {
                       {/* In-Card Status & Next Action Control Bar */}
                       <div className="mt-4 pt-3.5 border-t border-stone-800/80 space-y-3">
                         
-                        {/* 1. BIG PROMINENT NEXT-ACTION BUTTON */}
+                        {/* 1. BIG PROMINENT ACCEPT & NEXT-ACTION BUTTONS */}
+                        {order.status === 'PENDING' && (
+                          <div className="space-y-2">
+                            <button
+                              onClick={() => handleUpdateStatus(order.id, 'PREPARING')}
+                              className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-orange-600 via-orange-500 to-amber-500 hover:from-orange-500 hover:to-amber-400 text-white font-black text-sm shadow-glow-tandoor flex items-center justify-center gap-2.5 transition active:scale-98 border border-orange-400/50"
+                              title="Order accept karein aur kitchen me prepare hone bhejein"
+                            >
+                              <Check className="w-5 h-5 flex-shrink-0" />
+                              <Flame className="w-5 h-5 flex-shrink-0" />
+                              <span>✓ ACCEPT ORDER ➔ Kitchen Me Bhejo (Preparing)</span>
+                            </button>
+
+                            <button
+                              onClick={() => handleUpdateStatus(order.id, 'SERVED')}
+                              className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-bold text-xs shadow-md flex items-center justify-center gap-2 transition active:scale-98"
+                              title="Khana ready hai to direct Served mark karein"
+                            >
+                              <Utensils className="w-4 h-4 flex-shrink-0" />
+                              <span>✓ Direct Accept &amp; Served (Table Par Bhejo) 🍽️ ➔</span>
+                            </button>
+                          </div>
+                        )}
+
                         {order.status === 'PREPARING' && (
                           <button
                             onClick={() => handleUpdateStatus(order.id, 'SERVED')}
-                            className="w-full py-3 px-4 rounded-2xl bg-gradient-to-r from-blue-600 via-cyan-600 to-teal-500 hover:from-blue-500 hover:to-teal-400 text-white font-black text-sm shadow-xl flex items-center justify-center gap-2.5 transition active:scale-98 animate-pulse"
-                            title="Khana tandoor se ban gaya! Table par Served mark karein"
+                            className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-blue-600 hover:from-emerald-500 hover:to-blue-500 text-white font-black text-sm shadow-xl flex items-center justify-center gap-2.5 transition active:scale-98 border-2 border-emerald-400/70 shadow-glow"
+                            title="Khana tandoor se ban gaya! Accept karke Served mark karein"
                           >
+                            <Check className="w-5 h-5 flex-shrink-0" />
                             <Utensils className="w-5 h-5 flex-shrink-0" />
-                            <span>Khana Ready! Mark as SERVED (Table Par Bhejo) ➔</span>
-                          </button>
-                        )}
-
-                        {order.status === 'PENDING' && (
-                          <button
-                            onClick={() => handleUpdateStatus(order.id, 'PREPARING')}
-                            className="w-full py-3 px-4 rounded-2xl bg-gradient-to-r from-orange-600 via-orange-500 to-amber-500 hover:from-orange-500 hover:to-amber-400 text-white font-black text-sm shadow-glow-tandoor flex items-center justify-center gap-2.5 transition active:scale-98"
-                            title="Kitchen me order bhejo aur tandoor par prepare karein"
-                          >
-                            <Flame className="w-5 h-5 flex-shrink-0" />
-                            <span>Kitchen Me Bhejo (Start PREPARING) 🔥 ➔</span>
+                            <span>✓ ACCEPT &amp; MARK AS SERVED (Table Par Bhejo) 🍽️ ➔</span>
                           </button>
                         )}
 
                         {order.status === 'SERVED' && (
                           <button
                             onClick={() => handleUpdateStatus(order.id, 'COMPLETED')}
-                            className="w-full py-3 px-4 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 hover:from-emerald-500 hover:to-teal-400 text-white font-black text-sm shadow-xl flex items-center justify-center gap-2.5 transition active:scale-98"
+                            className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 hover:from-emerald-500 hover:to-teal-400 text-white font-black text-sm shadow-xl flex items-center justify-center gap-2.5 transition active:scale-98 border border-emerald-400/50"
                             title="Order poora ho gaya & bill pay ho gaya"
                           >
                             <CheckCircle2 className="w-5 h-5 flex-shrink-0" />
-                            <span>Order Complete &amp; Bill Paid (COMPLETE) ✅ ➔</span>
+                            <span>✓ COMPLETE ORDER &amp; BILL PAID (Complete) ✅ ➔</span>
                           </button>
                         )}
 
