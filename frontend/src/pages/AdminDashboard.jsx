@@ -1,0 +1,2138 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { useAuth } from '../context/AuthContext';
+import { restaurantApi } from '../api/restaurantApi';
+import { RESTAURANT_INFO, MENU_ITEMS, CATEGORIES } from '../data/defaultMenu';
+import { QRCodeSVG } from 'qrcode.react';
+import { 
+  Utensils, 
+  Flame, 
+  Clock, 
+  CheckCircle2, 
+  AlertCircle, 
+  TrendingUp, 
+  LogOut, 
+  Search, 
+  Printer, 
+  QrCode, 
+  ShoppingBag, 
+  RefreshCw,
+  Phone,
+  Layers,
+  ChevronRight,
+  Sparkles,
+  Plus,
+  Trash2,
+  X,
+  Check,
+  Camera,
+  Upload,
+  Image as ImageIcon,
+  Edit3,
+  Pencil,
+  Bell,
+  BellRing,
+  Volume2,
+  VolumeX,
+  ShieldAlert,
+  ShieldCheck,
+  Smartphone,
+  User,
+  PhoneCall,
+  AlertTriangle
+} from 'lucide-react';
+import { getDishImageUrl, ADMIN_IMAGE_PRESETS } from '../utils/dishImageHelper';
+import { playOrderBellSound, testBellSound, isBellSoundEnabled, toggleBellSound } from '../utils/orderAudioHelper';
+import { parseVerificationFromOrder } from '../utils/locationHelper';
+
+export default function AdminDashboard({ onNavigateToMenu }) {
+  const { logout } = useAuth();
+  const [activeTab, setActiveTab] = useState('orders'); // 'orders' | 'menu' | 'qrs' | 'analytics'
+  const [orders, setOrders] = useState([]);
+  const [stats, setStats] = useState({
+    totalOrdersCount: 0,
+    todayOrdersCount: 0,
+    totalRevenue: 0,
+    activeOrdersCount: 0
+  });
+
+  const [orderStatusFilter, setOrderStatusFilter] = useState('ALL');
+  const [menuItems, setMenuItems] = useState([]);
+  const [categories, setCategories] = useState(CATEGORIES);
+  const [menuSearch, setMenuSearch] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [previewQrTable, setPreviewQrTable] = useState(1);
+
+  // Add Dish Modal State
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isSavingDish, setIsSavingDish] = useState(false);
+  const [addSuccessMsg, setAddSuccessMsg] = useState('');
+  const [dishForm, setDishForm] = useState({
+    name: '',
+    categorySlug: 'veg-tandoori',
+    priceType: 'half_full', // 'half_full' | 'single'
+    priceHalf: '',
+    priceFull: '',
+    singlePrice: '',
+    portionUnit: '',
+    spiceLevel: 'Medium',
+    isChefSpecial: false,
+    isBestseller: false,
+    description: '',
+    imageUrl: ''
+  });
+
+  // Edit Dish Photo Modal State
+  const [photoEditItem, setPhotoEditItem] = useState(null);
+  const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
+  const [editingPhotoUrl, setEditingPhotoUrl] = useState('');
+  const [isUpdatingPhoto, setIsUpdatingPhoto] = useState(false);
+
+  // Edit Dish Details Modal State
+  const [editingDishItem, setEditingDishItem] = useState(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+  const [editForm, setEditForm] = useState({
+    name: '',
+    categorySlug: 'veg-tandoori',
+    priceType: 'half_full', // 'half_full' | 'single'
+    priceHalf: '',
+    priceFull: '',
+    singlePrice: '',
+    portionUnit: '',
+    spiceLevel: 'Medium',
+    isChefSpecial: false,
+    isBestseller: false,
+    description: '',
+    imageUrl: '',
+    isAvailable: true
+  });
+
+  // Sound & Real-time Notification Alert State
+  const [soundEnabled, setSoundEnabled] = useState(() => isBellSoundEnabled());
+  const [latestNewOrder, setLatestNewOrder] = useState(null);
+  const lastSeenOrderIdRef = useRef(null);
+
+  // Load orders, menu & stats
+  const refreshData = async () => {
+    try {
+      const ordersData = await restaurantApi.getAllOrders();
+      setOrders(ordersData);
+
+      // Check for incoming new orders to ring the counter bell & trigger persistent toast
+      if (Array.isArray(ordersData) && ordersData.length > 0) {
+        if (lastSeenOrderIdRef.current !== null) {
+          const freshOrders = ordersData.filter(o => o.id > lastSeenOrderIdRef.current);
+          if (freshOrders.length > 0) {
+            playOrderBellSound();
+            setLatestNewOrder(freshOrders[0]);
+          }
+        }
+        const maxId = Math.max(...ordersData.map(o => (typeof o.id === 'number' ? o.id : 0)), 0);
+        lastSeenOrderIdRef.current = Math.max(lastSeenOrderIdRef.current || 0, maxId);
+      }
+
+      const statsData = await restaurantApi.getAdminStats();
+      setStats(statsData);
+      const itemsData = await restaurantApi.getMenuItems();
+      setMenuItems(itemsData);
+      const catsData = await restaurantApi.getCategories();
+      setCategories(catsData);
+    } catch (err) {
+      console.warn('Failed to load admin data:', err);
+    }
+  };
+
+  useEffect(() => {
+    refreshData();
+    const interval = setInterval(refreshData, 4000); // 4-second fast polling for real-time orders
+
+    // Real-time cross-tab storage listener (immediate ring when customer places order in another tab)
+    const handleStorageEvent = (e) => {
+      if (e.key === 'mcj_latest_order_event' && e.newValue) {
+        try {
+          const orderEvent = JSON.parse(e.newValue);
+          playOrderBellSound();
+          setLatestNewOrder(orderEvent);
+          refreshData();
+        } catch (err) {}
+      }
+    };
+    window.addEventListener('storage', handleStorageEvent);
+
+    // Light-dismiss dialog on Escape key
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setIsAddModalOpen(false);
+        setIsPhotoModalOpen(false);
+        setIsEditModalOpen(false);
+        setLatestNewOrder(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('storage', handleStorageEvent);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
+
+  const handleUpdateStatus = async (orderId, nextStatus) => {
+    try {
+      await restaurantApi.updateOrderStatus(orderId, nextStatus);
+      refreshData();
+    } catch (err) {
+      alert('Failed to update order: ' + err.message);
+    }
+  };
+
+  const handleVerifyOrder = async (orderId, verificationStatus, nextStatus = 'PREPARING') => {
+    try {
+      await restaurantApi.updateOrderStatus(orderId, nextStatus, verificationStatus);
+      if (latestNewOrder && latestNewOrder.id === orderId) {
+        setLatestNewOrder(null);
+      }
+      refreshData();
+    } catch (err) {
+      alert('Failed to update order: ' + err.message);
+    }
+  };
+
+  const handleRejectFakeOrder = async (orderId, tableNum) => {
+    const isConfirmed = window.confirm(
+      `⚠️ KYA AAP SURE HAIN?\n\nTable ${tableNum || ''} ke is order ko FAKE / REJECT mark karein?\n(Customer table par present nahi hai ya ghr se order kiya hai)`
+    );
+    if (!isConfirmed) return;
+
+    try {
+      await restaurantApi.updateOrderStatus(orderId, 'CANCELLED', 'REJECTED_FAKE');
+      if (latestNewOrder && latestNewOrder.id === orderId) {
+        setLatestNewOrder(null);
+      }
+      refreshData();
+    } catch (err) {
+      alert('Failed to reject order: ' + err.message);
+    }
+  };
+
+  const handleDeleteOrder = async (orderId, orderNumber) => {
+    const isConfirmed = window.confirm(
+      `🗑️ Order Remove Karein?\n\nKya aap order "${orderNumber || '#' + orderId}" ko dashboard se permanent delete karna chahte hain?`
+    );
+    if (!isConfirmed) return;
+
+    try {
+      await restaurantApi.deleteOrder(orderId);
+      setOrders(prev => prev.filter(o => o.id !== orderId));
+      if (latestNewOrder && latestNewOrder.id === orderId) {
+        setLatestNewOrder(null);
+      }
+      setAddSuccessMsg(`Order "${orderNumber || '#' + orderId}" successfully remove ho gaya.`);
+      setTimeout(() => setAddSuccessMsg(''), 3500);
+      refreshData();
+    } catch (err) {
+      alert('Order delete karne me error: ' + err.message);
+    }
+  };
+
+  const handleClearAllOrders = async () => {
+    const isConfirmed = window.confirm(
+      '⚠️ KYA AAP SURE HAIN?\n\nSabhi customer orders ko clear / remove karna chahte hain? Abhi ke saare dummy/test orders hat jayenge aur counter zero ho jayega.'
+    );
+    if (!isConfirmed) return;
+
+    try {
+      await restaurantApi.clearAllOrders();
+      setOrders([]);
+      setLatestNewOrder(null);
+      setAddSuccessMsg('Sabhi customer orders safaltapoorvak remove kar diye gaye hain!');
+      setTimeout(() => setAddSuccessMsg(''), 4000);
+      refreshData();
+    } catch (err) {
+      alert('Orders clear karne me error: ' + err.message);
+    }
+  };
+
+  const handleToggleStock = async (itemId) => {
+    const res = await restaurantApi.toggleStock(itemId);
+    const nextVal = res ? (res.isAvailable !== false && res.available !== false) : null;
+    setMenuItems(prev => prev.map(it => {
+      if (it.id === itemId) {
+        const val = nextVal !== null ? nextVal : !it.isAvailable;
+        return { ...it, isAvailable: val, available: val };
+      }
+      return it;
+    }));
+  };
+
+  const handleDeleteDish = async (itemId, itemName) => {
+    if (!window.confirm(`Kya aap "${itemName}" ko menu se delete karna chahte hain?`)) {
+      return;
+    }
+    await restaurantApi.deleteMenuItem(itemId);
+    setMenuItems(prev => prev.filter(it => it.id !== itemId));
+  };
+
+  const handleCreateDish = async (e) => {
+    e.preventDefault();
+    if (!dishForm.name.trim()) {
+      alert('Dish ka naam enter karein');
+      return;
+    }
+
+    const isSingle = dishForm.priceType === 'single';
+    if (isSingle && !dishForm.singlePrice) {
+      alert('Single price enter karein');
+      return;
+    }
+    if (!isSingle && !dishForm.priceFull) {
+      alert('Full price enter karein');
+      return;
+    }
+
+    setIsSavingDish(true);
+    try {
+      const matchedCat = categories.find(c => c.slug === dishForm.categorySlug) || categories[0];
+      
+      const payload = {
+        name: dishForm.name.trim(),
+        categoryId: matchedCat.id,
+        categorySlug: matchedCat.slug,
+        categoryName: matchedCat.name,
+        description: dishForm.description.trim(),
+        priceHalf: !isSingle && dishForm.priceHalf ? parseFloat(dishForm.priceHalf) : null,
+        priceFull: !isSingle && dishForm.priceFull ? parseFloat(dishForm.priceFull) : null,
+        singlePrice: isSingle && dishForm.singlePrice ? parseFloat(dishForm.singlePrice) : null,
+        hasSinglePrice: isSingle,
+        portionUnit: dishForm.portionUnit.trim() || null,
+        spiceLevel: dishForm.spiceLevel,
+        isChefSpecial: dishForm.isChefSpecial,
+        isBestseller: dishForm.isBestseller,
+        imageUrl: dishForm.imageUrl?.trim() || null
+      };
+
+      const created = await restaurantApi.createMenuItem(payload);
+      setMenuItems(prev => [created, ...prev]);
+
+      setAddSuccessMsg(`"${created.name}" menu me add ho gayi hai!`);
+      setTimeout(() => setAddSuccessMsg(''), 4000);
+
+      // Reset Form
+      setDishForm({
+        name: '',
+        categorySlug: 'veg-tandoori',
+        priceType: 'half_full',
+        priceHalf: '',
+        priceFull: '',
+        singlePrice: '',
+        portionUnit: '',
+        spiceLevel: 'Medium',
+        isChefSpecial: false,
+        isBestseller: false,
+        description: '',
+        imageUrl: ''
+      });
+      setIsAddModalOpen(false);
+    } catch (err) {
+      alert('Dish add karne me error: ' + err.message);
+    } finally {
+      setIsSavingDish(false);
+    }
+  };
+
+  // Open Edit Dish Details Modal
+  const handleOpenEditModal = (item) => {
+    setEditingDishItem(item);
+    const isSingle = Boolean(item.hasSinglePrice || (!item.priceHalf && (item.singlePrice || item.priceFull)));
+    setEditForm({
+      name: item.name || '',
+      categorySlug: item.categorySlug || 'veg-tandoori',
+      priceType: isSingle ? 'single' : 'half_full',
+      priceHalf: item.priceHalf != null ? String(item.priceHalf) : '',
+      priceFull: item.priceFull != null ? String(item.priceFull) : '',
+      singlePrice: item.singlePrice != null ? String(item.singlePrice) : (item.priceFull != null ? String(item.priceFull) : ''),
+      portionUnit: item.portionUnit || '',
+      spiceLevel: item.spiceLevel || 'Medium',
+      isChefSpecial: Boolean(item.isChefSpecial),
+      isBestseller: Boolean(item.isBestseller),
+      description: item.description || '',
+      imageUrl: item.imageUrl || '',
+      isAvailable: item.isAvailable !== false && item.available !== false
+    });
+    setIsEditModalOpen(true);
+  };
+
+  // Save Complete Dish Details
+  const handleSaveEditDish = async (e) => {
+    e.preventDefault();
+    if (!editingDishItem) return;
+    if (!editForm.name.trim()) {
+      alert('Dish ka naam enter karein');
+      return;
+    }
+
+    const isSingle = editForm.priceType === 'single';
+    if (isSingle && !editForm.singlePrice) {
+      alert('Single price enter karein');
+      return;
+    }
+    if (!isSingle && !editForm.priceFull) {
+      alert('Full price enter karein');
+      return;
+    }
+
+    setIsSavingEdit(true);
+    try {
+      const matchedCat = categories.find(c => c.slug === editForm.categorySlug) || { slug: editForm.categorySlug, name: editForm.categorySlug };
+      const payload = {
+        name: editForm.name.trim().toUpperCase(),
+        categoryId: matchedCat.id,
+        categorySlug: matchedCat.slug,
+        categoryName: matchedCat.name,
+        description: editForm.description.trim(),
+        priceHalf: !isSingle && editForm.priceHalf ? parseFloat(editForm.priceHalf) : null,
+        priceFull: !isSingle && editForm.priceFull ? parseFloat(editForm.priceFull) : null,
+        singlePrice: isSingle && editForm.singlePrice ? parseFloat(editForm.singlePrice) : null,
+        hasSinglePrice: isSingle,
+        portionUnit: editForm.portionUnit.trim() || null,
+        spiceLevel: editForm.spiceLevel,
+        isChefSpecial: editForm.isChefSpecial,
+        isBestseller: editForm.isBestseller,
+        imageUrl: editForm.imageUrl?.trim() || null,
+        isAvailable: editForm.isAvailable,
+        available: editForm.isAvailable
+      };
+
+      const updated = await restaurantApi.updateMenuItem(editingDishItem.id, payload);
+      setMenuItems(prev => prev.map(it => it.id === editingDishItem.id ? { ...it, ...updated } : it));
+
+      setAddSuccessMsg(`"${payload.name}" details successfully update ho gayi!`);
+      setTimeout(() => setAddSuccessMsg(''), 4000);
+      setIsEditModalOpen(false);
+      setEditingDishItem(null);
+    } catch (err) {
+      alert('Dish update karne me error: ' + err.message);
+    } finally {
+      setIsSavingEdit(false);
+    }
+  };
+
+  // Upload Photo File Handler (supports Phone camera / File picker -> Base64)
+  const handleFileUpload = (e, target = 'add') => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      if (target === 'add') {
+        setDishForm(prev => ({ ...prev, imageUrl: reader.result }));
+      } else if (target === 'edit_dish') {
+        setEditForm(prev => ({ ...prev, imageUrl: reader.result }));
+      } else {
+        setEditingPhotoUrl(reader.result);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Save Dish Photo from Edit Photo Modal
+  const handleSavePhoto = async () => {
+    if (!photoEditItem) return;
+    setIsUpdatingPhoto(true);
+    try {
+      await restaurantApi.updateDishImage(photoEditItem.id, editingPhotoUrl);
+      setMenuItems(prev => prev.map(it => {
+        if (it.id === photoEditItem.id) {
+          return { ...it, imageUrl: editingPhotoUrl };
+        }
+        return it;
+      }));
+      setAddSuccessMsg(`"${photoEditItem.name}" ki photo successfully update ho gayi!`);
+      setTimeout(() => setAddSuccessMsg(''), 4000);
+      setIsPhotoModalOpen(false);
+      setPhotoEditItem(null);
+    } catch (err) {
+      alert('Photo update karne me error: ' + err.message);
+    } finally {
+      setIsUpdatingPhoto(false);
+    }
+  };
+
+  const filteredOrders = orders.filter(o => {
+    if (orderStatusFilter === 'ALL') return true;
+    return o.status === orderStatusFilter;
+  });
+
+  const filteredMenu = menuItems.filter(item => {
+    if (selectedCategory !== 'all' && (item.categorySlug || '').toLowerCase() !== (selectedCategory || '').toLowerCase()) {
+      return false;
+    }
+    if (menuSearch.trim()) {
+      const q = menuSearch.toLowerCase().trim();
+      return (
+        item.name.toLowerCase().includes(q) || 
+        (item.categoryName && item.categoryName.toLowerCase().includes(q))
+      );
+    }
+    return true;
+  });
+
+  const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://malai-chaap-junction.vercel.app';
+  const pendingVerificationOrders = orders.filter(o => o.status === 'PENDING' && o.orderType === 'DINE_IN');
+
+  return (
+    <div className="min-h-screen bg-stone-950 text-stone-100 pb-20 relative">
+      
+      {/* PERSISTENT TOAST NOTIFICATION: INCOMING ORDER ALERT */}
+      {latestNewOrder && (
+        <aside 
+          className="fixed top-20 right-4 sm:right-6 z-50 max-w-sm sm:max-w-md w-full bg-stone-900/95 border-2 border-orange-500 rounded-3xl p-5 shadow-2xl backdrop-blur-xl animate-fade-in"
+          role="status"
+          aria-live="assertive"
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center gap-2.5">
+              <div className="w-10 h-10 rounded-2xl bg-orange-600 flex items-center justify-center text-white shadow-glow-tandoor flex-shrink-0 animate-pulse">
+                <BellRing className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-black uppercase tracking-wider text-orange-400 font-display">
+                    🔔 NAYA ORDER AAYA HAI!
+                  </span>
+                  <span className="text-[10px] font-mono text-stone-400">
+                    {latestNewOrder.orderNumber}
+                  </span>
+                </div>
+                <h4 className="text-base font-black text-white font-display">
+                  {latestNewOrder.tableNumber ? `Table #${latestNewOrder.tableNumber}` : 'Takeaway Parcel'}
+                  <span className="text-amber-400 ml-2 font-mono">₹{latestNewOrder.total}</span>
+                </h4>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setLatestNewOrder(null)}
+              className="w-7 h-7 rounded-full bg-stone-800 hover:bg-stone-700 text-stone-400 hover:text-white flex items-center justify-center transition flex-shrink-0"
+              title="Close Notification"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* Table Verification / Fraud Check Badge */}
+          {latestNewOrder.tableNumber && (
+            <div className={`mt-3 p-2.5 rounded-xl border text-xs ${
+              latestNewOrder.locationStatus === 'SUSPECTED_REMOTE'
+                ? 'bg-red-950/60 border-red-500/70 text-red-300'
+                : latestNewOrder.locationStatus === 'VERIFIED_AT_RESTAURANT'
+                ? 'bg-emerald-950/60 border-emerald-500/60 text-emerald-300'
+                : 'bg-amber-950/60 border-amber-500/60 text-amber-300'
+            }`}>
+              <div className="flex items-center justify-between font-bold text-[11px]">
+                <span className="flex items-center gap-1">
+                  <ShieldAlert className="w-3.5 h-3.5" />
+                  Presence Verification:
+                </span>
+                <span className="font-black uppercase">
+                  {latestNewOrder.locationStatus === 'VERIFIED_AT_RESTAURANT'
+                    ? '🟢 Location Verified'
+                    : latestNewOrder.locationStatus === 'SUSPECTED_REMOTE'
+                    ? '⚠️ SUSPECTED FAKE / REMOTE!'
+                    : '🟡 Location Not Shared'}
+                </span>
+              </div>
+              <p className="text-[11px] mt-1 leading-snug">
+                {latestNewOrder.locationStatus === 'SUSPECTED_REMOTE'
+                  ? `Customer restaurant se ${latestNewOrder.distanceDisplay || 'door'} hai! Ghr se order kiya ho sakta hai. Table #${latestNewOrder.tableNumber} par physically verify karein!`
+                  : latestNewOrder.locationStatus === 'VERIFIED_AT_RESTAURANT'
+                  ? `Customer restaurant ke paas (${latestNewOrder.distanceDisplay || '15m'}) present hai.`
+                  : `Customer ne GPS share nahi kiya. Table #${latestNewOrder.tableNumber} par customer ko physically check karein.`}
+              </p>
+            </div>
+          )}
+
+          {/* Quick Items Preview */}
+          {latestNewOrder.itemsSummary && (
+            <p className="text-xs text-stone-400 mt-2 line-clamp-2">
+              <strong className="text-stone-300">Items:</strong> {latestNewOrder.itemsSummary}
+            </p>
+          )}
+
+          {/* Action Buttons */}
+          <div className="mt-3 pt-2.5 border-t border-stone-800/80 flex gap-2">
+            <button
+              onClick={() => {
+                setActiveTab('orders');
+                setOrderStatusFilter('PENDING');
+                if (latestNewOrder.id) {
+                  handleVerifyOrder(latestNewOrder.id, 'VERIFIED_ACCEPTED', 'PREPARING');
+                }
+              }}
+              className="flex-1 py-2 px-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs shadow-md transition flex items-center justify-center gap-1.5"
+            >
+              <Check className="w-3.5 h-3.5" />
+              <span>Table Par Baithe Hain (Accept)</span>
+            </button>
+            <button
+              onClick={() => {
+                if (latestNewOrder.id) {
+                  handleRejectFakeOrder(latestNewOrder.id, latestNewOrder.tableNumber);
+                }
+              }}
+              className="py-2 px-3 rounded-xl bg-red-950/80 hover:bg-red-900 text-red-300 border border-red-700/60 font-bold text-xs transition flex items-center gap-1"
+            >
+              <X className="w-3.5 h-3.5" />
+              <span>Fake / Reject</span>
+            </button>
+          </div>
+        </aside>
+      )}
+      
+      {/* Top Header */}
+      <header className="bg-stone-900 border-b border-stone-800 sticky top-16 z-20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-orange-600 flex items-center justify-center text-white shadow-glow-tandoor">
+              <Flame className="w-6 h-6" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-lg font-black uppercase tracking-wide font-display text-white">
+                  Kitchen Display &amp; Admin Portal
+                </h1>
+                <span className="text-[10px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full font-bold">
+                  LIVE
+                </span>
+                {pendingVerificationOrders.length > 0 && (
+                  <span className="text-[10px] bg-red-500/20 text-red-400 border border-red-500/30 px-2 py-0.5 rounded-full font-extrabold flex items-center gap-1 animate-pulse">
+                    <Bell className="w-3 h-3 fill-red-400" />
+                    {pendingVerificationOrders.length} New Orders Table Check
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-stone-400">
+                Svad Malai Chaap Junction &bull; Sanjay Nagar, Ghaziabad
+              </p>
+            </div>
+          </div>
+
+          {/* Action buttons with Bell Audio Controls */}
+          <div className="flex items-center gap-2 sm:gap-2.5 flex-wrap">
+            {/* Bell Sound ON / MUTE Switch */}
+            <button
+              onClick={() => {
+                const next = toggleBellSound();
+                setSoundEnabled(next);
+              }}
+              className={`px-3 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition ${
+                soundEnabled
+                  ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/25'
+                  : 'bg-stone-800 text-stone-500 border-stone-700 hover:text-stone-300'
+              }`}
+              title={soundEnabled ? 'Order Bell Sound Active (Click to Mute)' : 'Order Bell Muted (Click to Unmute)'}
+            >
+              {soundEnabled ? (
+                <Volume2 className="w-3.5 h-3.5 text-emerald-400" />
+              ) : (
+                <VolumeX className="w-3.5 h-3.5 text-stone-500" />
+              )}
+              <span className="hidden sm:inline">{soundEnabled ? 'Bell: ON' : 'Bell: MUTED'}</span>
+            </button>
+
+            {/* Test Bell Sound */}
+            <button
+              onClick={testBellSound}
+              className="px-2.5 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs font-bold flex items-center gap-1 transition active:scale-95"
+              title="Test Counter Service Bell Sound (Ding-Ding!)"
+            >
+              <BellRing className="w-3.5 h-3.5 text-amber-400" />
+              <span className="hidden sm:inline">Test Bell</span>
+            </button>
+
+            <button
+              onClick={refreshData}
+              className="px-3 py-1.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-300 text-xs font-semibold flex items-center gap-1.5 transition"
+              title="Refresh Orders"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              <span>Refresh</span>
+            </button>
+            <button
+              onClick={() => { setActiveTab('menu'); setIsAddModalOpen(true); }}
+              className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-orange-600 via-orange-500 to-amber-500 hover:from-orange-500 hover:to-amber-400 text-white text-xs font-black flex items-center gap-1.5 shadow-glow-tandoor active:scale-95 transition"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>+ Add Dish</span>
+            </button>
+            <button
+              onClick={onNavigateToMenu}
+              className="px-3 py-1.5 rounded-xl bg-orange-600/20 text-orange-400 hover:bg-orange-600/30 border border-orange-500/40 text-xs font-semibold transition"
+            >
+              View Menu
+            </button>
+            <button
+              onClick={logout}
+              className="px-3 py-1.5 rounded-xl bg-stone-800 hover:bg-red-950/60 text-stone-400 hover:text-red-400 border border-stone-700 text-xs font-semibold flex items-center gap-1.5 transition"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span>Logout</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Stats Row */}
+        <div className="border-t border-stone-800/80 bg-stone-900/60">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-2.5 grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
+            <div>
+              <span className="text-stone-500 font-medium">Active Kitchen Orders:</span>
+              <span className="ml-1.5 font-bold text-amber-400 text-sm">
+                {orders.filter(o => o.status === 'PENDING' || o.status === 'PREPARING').length}
+              </span>
+            </div>
+            <div>
+              <span className="text-stone-500 font-medium">Total Orders:</span>
+              <span className="ml-1.5 font-bold text-stone-200 text-sm">{orders.length}</span>
+            </div>
+            <div>
+              <span className="text-stone-500 font-medium">Total Sales:</span>
+              <span className="ml-1.5 font-bold text-emerald-400 text-sm">
+                ₹{orders.reduce((sum, o) => sum + (o.total || 0), 0).toFixed(0)}
+              </span>
+            </div>
+            <div>
+              <span className="text-stone-500 font-medium">Total Menu Dishes:</span>
+              <span className="ml-1.5 font-bold text-orange-400 text-sm">{menuItems.length} Dishes</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Navigation Tabs */}
+        <div className="border-t border-stone-800 px-4 sm:px-6 flex gap-2 overflow-x-auto no-scrollbar">
+          {[
+            { id: 'orders', label: '🔥 Kitchen Display (KDS)', count: orders.filter(o => o.status === 'PENDING' || o.status === 'PREPARING').length },
+            { id: 'menu', label: `📋 Menu & Stock (${menuItems.length})`, count: null },
+            { id: 'qrs', label: '📱 Table QR Standees (1-20)', count: null },
+            { id: 'analytics', label: '📊 Store Info & Sales', count: null }
+          ].map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`py-3 px-4 text-xs font-bold border-b-2 whitespace-nowrap transition flex items-center gap-2 ${
+                activeTab === tab.id
+                  ? 'border-orange-500 text-orange-400'
+                  : 'border-transparent text-stone-400 hover:text-stone-200'
+              }`}
+            >
+              <span>{tab.label}</span>
+              {tab.count !== null && tab.count > 0 && (
+                <span className="px-1.5 py-0.2 rounded-full bg-orange-600 text-white text-[10px]">
+                  {tab.count}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+      </header>
+
+      {/* Main Content Areas */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 pt-6">
+
+        {addSuccessMsg && (
+          <div className="mb-5 p-3.5 rounded-2xl bg-emerald-950/80 border border-emerald-500 text-emerald-300 text-xs font-bold flex items-center gap-2 shadow-lg">
+            <CheckCircle2 className="w-5 h-5 text-emerald-400 flex-shrink-0" />
+            <span>{addSuccessMsg}</span>
+          </div>
+        )}
+        
+        {/* TAB 1: KITCHEN DISPLAY SYSTEM */}
+        {activeTab === 'orders' && (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
+                {['ALL', 'PENDING', 'PREPARING', 'SERVED', 'COMPLETED'].map(status => (
+                  <button
+                    key={status}
+                    onClick={() => setOrderStatusFilter(status)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap ${
+                      orderStatusFilter === status
+                        ? 'bg-amber-500 text-black'
+                        : 'bg-stone-900 text-stone-400 hover:text-stone-200 border border-stone-800'
+                    }`}
+                  >
+                    {status}
+                  </button>
+                ))}
+              </div>
+
+              {orders.length > 0 && (
+                <button
+                  onClick={handleClearAllOrders}
+                  className="px-3 py-1.5 rounded-xl bg-red-950/40 hover:bg-red-900/80 text-red-300 border border-red-700/60 text-xs font-bold flex items-center gap-1.5 transition ml-auto"
+                  title="Sabhi customer orders ko clear karein"
+                >
+                  <Trash2 className="w-3.5 h-3.5 text-red-400" />
+                  <span>Clear All Orders</span>
+                </button>
+              )}
+            </div>
+
+            {filteredOrders.length === 0 ? (
+              <div className="text-center py-20 bg-stone-900/40 rounded-3xl border border-stone-800 p-8">
+                <Utensils className="w-12 h-12 text-stone-600 mx-auto mb-3" />
+                <h3 className="text-lg font-bold text-stone-200 font-display">Koi Customer Order Nahi Hai</h3>
+                <p className="text-xs text-stone-400 mt-1 max-w-md mx-auto">
+                  Purane dummy/test orders saaf kar diye gaye hain. Jab aap ya customer QR code scan karke ya live menu se order karenge, counter bell bajegi aur order yahan live aayega.
+                </p>
+                <div className="mt-4 flex items-center justify-center gap-3">
+                  <button
+                    onClick={onNavigateToMenu}
+                    className="px-4 py-2 rounded-xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white text-xs font-bold shadow-md transition"
+                  >
+                    Naya Order Place Karke Dekhein 🍽️
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {filteredOrders.map(order => {
+                  const isPending = order.status === 'PENDING';
+                  const isPreparing = order.status === 'PREPARING';
+                  const isServed = order.status === 'SERVED';
+                  const isCompleted = order.status === 'COMPLETED';
+
+                  return (
+                    <div
+                      key={order.id}
+                      className={`p-5 rounded-2xl border transition-all flex flex-col justify-between ${
+                        isPending
+                          ? 'bg-orange-950/20 border-orange-500/50 shadow-glow-tandoor'
+                          : isPreparing
+                          ? 'bg-amber-950/20 border-amber-500/50'
+                          : 'bg-stone-900/80 border-stone-800'
+                      }`}
+                    >
+                      <div>
+                        {/* Order Header */}
+                        <div className="flex items-center justify-between border-b border-stone-800/80 pb-3 mb-3">
+                          <div>
+                            <span className="text-xs font-mono font-bold text-amber-400">
+                              {order.orderNumber}
+                            </span>
+                            <div className="text-base font-black text-white font-display mt-0.5">
+                              {order.orderType === 'DINE_IN' ? `Table ${order.tableNumber || '-'}` : 'Takeaway Parcel'}
+                            </div>
+                          </div>
+
+                          <span className={`text-[10px] font-black uppercase px-2.5 py-1 rounded-full border ${
+                            isPending
+                              ? 'bg-orange-500 text-white border-orange-400 animate-pulse'
+                              : isPreparing
+                              ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                              : isServed
+                              ? 'bg-blue-500/20 text-blue-300 border-blue-500/40'
+                              : 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40'
+                          }`}>
+                            {order.status}
+                          </span>
+                        </div>
+
+                        {/* Customer Info */}
+                        <div className="text-xs text-stone-400 mb-3 flex items-center justify-between">
+                          <span>👤 {order.customerName || 'Guest'}</span>
+                          {order.customerPhone && <span>📞 {order.customerPhone}</span>}
+                        </div>
+
+                        {/* Items List */}
+                        <div className="space-y-2 py-2 border-y border-stone-800/60 my-2">
+                          {order.items?.map((it, idx) => (
+                            <div key={idx} className="flex items-start justify-between text-xs">
+                              <div>
+                                <span className="font-bold text-stone-200">
+                                  {it.quantity}x {it.itemName}
+                                </span>
+                                {it.portion && it.portion !== 'SINGLE' && (
+                                  <span className="text-[10px] text-orange-400 ml-1 font-semibold uppercase">
+                                    ({it.portion})
+                                  </span>
+                                )}
+                                {it.notes && (
+                                  <p className="text-[11px] text-amber-400/90 italic">
+                                    "{it.notes}"
+                                  </p>
+                                )}
+                              </div>
+                              <span className="font-bold text-stone-300">
+                                ₹{(it.pricePerUnit * it.quantity).toFixed(0)}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Table Presence & Verification Panel */}
+                        {order.orderType === 'DINE_IN' && (
+                          <div className={`my-3 p-3 rounded-2xl border text-xs space-y-2 ${
+                            order.verificationStatus === 'REJECTED_FAKE'
+                              ? 'bg-red-950/70 border-red-600'
+                              : order.locationStatus === 'SUSPECTED_REMOTE'
+                              ? 'bg-red-950/40 border-red-500/60 shadow-md'
+                              : order.locationStatus === 'VERIFIED_AT_RESTAURANT'
+                              ? 'bg-emerald-950/30 border-emerald-500/40'
+                              : 'bg-stone-950 border-stone-800'
+                          }`}>
+                            <div className="flex items-center justify-between font-bold">
+                              <span className="flex items-center gap-1.5 uppercase tracking-wider text-[11px] font-display text-stone-200">
+                                <ShieldAlert className="w-3.5 h-3.5 text-amber-400" />
+                                Table {order.tableNumber} Presence Check
+                              </span>
+                              <span className={`text-[10px] font-black px-2 py-0.5 rounded-full border ${
+                                order.verificationStatus === 'REJECTED_FAKE'
+                                  ? 'bg-red-600 text-white border-red-400'
+                                  : order.verificationStatus === 'VERIFIED_ACCEPTED'
+                                  ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                                  : order.locationStatus === 'VERIFIED_AT_RESTAURANT'
+                                  ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40'
+                                  : order.locationStatus === 'SUSPECTED_REMOTE'
+                                  ? 'bg-red-500/20 text-red-400 border-red-500/50 animate-pulse'
+                                  : 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                              }`}>
+                                {order.verificationStatus === 'REJECTED_FAKE'
+                                  ? '❌ FAKE / REJECTED'
+                                  : order.verificationStatus === 'VERIFIED_ACCEPTED'
+                                  ? '✓ TABLE VERIFIED'
+                                  : order.locationStatus === 'VERIFIED_AT_RESTAURANT'
+                                  ? '📍 At Restaurant'
+                                  : order.locationStatus === 'SUSPECTED_REMOTE'
+                                  ? '⚠️ Suspected Remote'
+                                  : '📍 Not Shared'}
+                              </span>
+                            </div>
+
+                            {/* Distance & Risk Warning */}
+                            <p className="text-[11px] leading-tight text-stone-300">
+                              {order.verificationStatus === 'REJECTED_FAKE'
+                                ? '❌ Order rejected: Customer table par nahi tha ya ghr se order kiya gaya.'
+                                : order.verificationStatus === 'VERIFIED_ACCEPTED'
+                                ? '✓ Staff confirmed: Customer Table par physically baithe hain.'
+                                : order.locationStatus === 'SUSPECTED_REMOTE'
+                                ? `⚠️ WARNING: Customer ${order.distanceDisplay || 'door'} se order kar raha hai! Ghr se order ki sambhavna hai. Table ${order.tableNumber} par physically check karein.`
+                                : order.locationStatus === 'VERIFIED_AT_RESTAURANT'
+                                ? `🟢 Customer restaurant ke andar/paas (${order.distanceDisplay || '15m'}) present hai.`
+                                : `Customer ne location share nahi ki. Table ${order.tableNumber} par physically dekh lein.`}
+                            </p>
+
+                            {/* QR & Device Metadata */}
+                            <div className="flex items-center gap-2 flex-wrap text-[10px] text-stone-400 pt-1.5 border-t border-stone-800/80">
+                              <span className="flex items-center gap-1">
+                                <QrCode className="w-3 h-3 text-amber-400" />
+                                {order.isQrScanned ? '📱 Physical QR Standee Scanned' : '✍️ Manual Table Selected'}
+                              </span>
+                              {order.deviceInfo && (
+                                <span className="flex items-center gap-1">
+                                  <Smartphone className="w-3 h-3 text-blue-400" />
+                                  {order.deviceInfo}
+                                </span>
+                              )}
+                              {order.customerPhone && (
+                                <a
+                                  href={`tel:${order.customerPhone}`}
+                                  className="flex items-center gap-1 text-amber-400 hover:underline font-semibold ml-auto"
+                                >
+                                  <PhoneCall className="w-3 h-3" />
+                                  <span>Call Customer</span>
+                                </a>
+                              )}
+                            </div>
+
+                            {/* Verification Decision Buttons for Pending Orders */}
+                            {order.status === 'PENDING' && order.verificationStatus !== 'REJECTED_FAKE' && (
+                              <div className="pt-2 flex gap-2">
+                                <button
+                                  onClick={() => handleVerifyOrder(order.id, 'VERIFIED_ACCEPTED', 'PREPARING')}
+                                  className="flex-1 py-1.5 px-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[11px] flex items-center justify-center gap-1 shadow-sm transition"
+                                  title="Confirm customer is sitting at Table and send order to kitchen"
+                                >
+                                  <Check className="w-3.5 h-3.5" />
+                                  <span>Table Par Baithe Hain (Accept)</span>
+                                </button>
+                                <button
+                                  onClick={() => handleRejectFakeOrder(order.id, order.tableNumber)}
+                                  className="py-1.5 px-2.5 rounded-xl bg-red-950/80 hover:bg-red-900 text-red-300 border border-red-700/60 font-bold text-[11px] flex items-center justify-center gap-1 transition"
+                                  title="Reject if table is empty or customer is remote"
+                                >
+                                  <X className="w-3.5 h-3.5" />
+                                  <span>Fake / Ghr Se (Reject)</span>
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {order.cleanNotes ? (
+                          <div className="p-2 rounded-xl bg-orange-950/40 border border-orange-800/40 text-[11px] text-orange-300 mt-2">
+                            <strong>Chef Note:</strong> {order.cleanNotes}
+                          </div>
+                        ) : order.notes && !order.notes.startsWith('[VERIFY|') ? (
+                          <div className="p-2 rounded-xl bg-orange-950/40 border border-orange-800/40 text-[11px] text-orange-300 mt-2">
+                            <strong>Chef Note:</strong> {order.notes}
+                          </div>
+                        ) : null}
+
+                        <div className="flex items-center justify-between text-xs text-stone-400 mt-3 pt-2">
+                          <span>Total Amount</span>
+                          <span className="text-sm font-black text-amber-400 font-display">
+                            ₹{order.total?.toFixed(0)}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Action Buttons */}
+                      <div className="mt-4 pt-3 border-t border-stone-800/80 flex gap-2">
+                        {isPending && (
+                          <button
+                            onClick={() => handleVerifyOrder(order.id, 'VERIFIED_ACCEPTED', 'PREPARING')}
+                            className="flex-1 py-2 px-3 rounded-xl bg-orange-600 hover:bg-orange-500 text-white font-bold text-xs shadow-glow-tandoor transition flex items-center justify-center gap-1"
+                          >
+                            <span>Mark Preparing 🔥</span>
+                          </button>
+                        )}
+                        {isPreparing && (
+                          <button
+                            onClick={() => handleUpdateStatus(order.id, 'SERVED')}
+                            className="flex-1 py-2 px-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs transition"
+                          >
+                            Mark Served 🍽️
+                          </button>
+                        )}
+                        {isServed && (
+                          <button
+                            onClick={() => handleUpdateStatus(order.id, 'COMPLETED')}
+                            className="flex-1 py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition"
+                          >
+                            Complete Order ✅
+                          </button>
+                        )}
+                        {!isCompleted && order.status !== 'CANCELLED' && (
+                          <button
+                            onClick={() => handleRejectFakeOrder(order.id, order.tableNumber)}
+                            className="py-2 px-3 rounded-xl bg-stone-800 hover:bg-red-950/60 text-stone-400 hover:text-red-400 text-xs transition"
+                            title="Cancel / Reject Order"
+                          >
+                            Reject
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleDeleteOrder(order.id, order.orderNumber)}
+                          className="py-2 px-2.5 rounded-xl bg-stone-800/80 hover:bg-red-950/80 text-stone-400 hover:text-red-400 border border-stone-700/60 text-xs transition flex items-center justify-center"
+                          title="Order Delete / Remove Karein"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* TAB 2: MENU & STOCK MANAGEMENT */}
+        {activeTab === 'menu' && (
+          <div className="space-y-6">
+            <div className="flex flex-col sm:flex-row gap-3 items-center justify-between">
+              
+              {/* Search input */}
+              <div className="relative w-full sm:w-72">
+                <Search className="w-4 h-4 text-stone-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  placeholder="Search dish name..."
+                  value={menuSearch}
+                  onChange={(e) => setMenuSearch(e.target.value)}
+                  className="w-full bg-stone-900 border border-stone-800 rounded-xl pl-9 pr-3 py-2 text-xs text-stone-100 placeholder-stone-500 focus:outline-none focus:border-orange-500"
+                />
+              </div>
+
+              {/* Category Filter & Add Dish Button */}
+              <div className="flex items-center gap-2.5 w-full sm:w-auto">
+                <select
+                  value={selectedCategory}
+                  onChange={(e) => setSelectedCategory(e.target.value)}
+                  className="flex-1 sm:flex-initial bg-stone-900 border border-stone-800 rounded-xl px-3 py-2 text-xs font-semibold text-stone-300 focus:outline-none"
+                >
+                  <option value="all">All Categories ({menuItems.length} items)</option>
+                  {categories.map(c => (
+                    <option key={c.id} value={c.slug}>{c.name}</option>
+                  ))}
+                </select>
+
+                <button
+                  onClick={() => setIsAddModalOpen(true)}
+                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-orange-600 via-orange-500 to-amber-500 hover:from-orange-500 hover:to-amber-400 text-white text-xs font-extrabold flex items-center gap-1.5 shadow-glow-tandoor active:scale-95 transition whitespace-nowrap"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Add New Dish</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Menu Items Table */}
+            <div className="rounded-2xl border border-stone-800 overflow-hidden bg-stone-900/60 shadow-xl">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs text-stone-300">
+                  <thead className="bg-stone-900 text-stone-400 uppercase font-semibold border-b border-stone-800">
+                    <tr>
+                      <th className="py-3 px-3">Photo</th>
+                      <th className="py-3 px-4">Dish Name</th>
+                      <th className="py-3 px-4">Category</th>
+                      <th className="py-3 px-4">Half Price</th>
+                      <th className="py-3 px-4">Full / Single Price</th>
+                      <th className="py-3 px-4">Status</th>
+                      <th className="py-3 px-4 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-stone-800">
+                    {filteredMenu.map(item => {
+                      const inStock = item.isAvailable !== false;
+                      const dishPic = getDishImageUrl(item);
+                      return (
+                        <tr key={item.id} className="hover:bg-stone-800/30 transition">
+                          <td className="py-3 px-3">
+                            <div 
+                              onClick={() => {
+                                setPhotoEditItem(item);
+                                setEditingPhotoUrl(item.imageUrl || dishPic);
+                                setIsPhotoModalOpen(true);
+                              }}
+                              className="group/thumb relative w-12 h-12 rounded-xl overflow-hidden cursor-pointer border border-stone-700 bg-stone-950 shadow-sm"
+                              title="Click to Change Dish Photo"
+                            >
+                              <img
+                                src={dishPic}
+                                alt={item.name}
+                                className="w-full h-full object-cover group-hover/thumb:scale-110 transition duration-300"
+                                onError={(e) => {
+                                  e.target.onerror = null;
+                                  e.target.src = 'https://images.unsplash.com/photo-1626777552726-4a6b54c97e46?auto=format&fit=crop&w=600&q=80';
+                                }}
+                              />
+                              <div className="absolute inset-0 bg-black/60 opacity-0 group-hover/thumb:opacity-100 flex items-center justify-center transition">
+                                <Camera className="w-4 h-4 text-white" />
+                              </div>
+                            </div>
+                          </td>
+                          <td className="py-3 px-4">
+                            <div className="flex items-center gap-2">
+                              <span className="w-3.5 h-3.5 border border-emerald-500 flex items-center justify-center rounded-sm bg-stone-950 p-0.5">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 block"></span>
+                              </span>
+                              <div className="font-bold text-stone-100 font-display uppercase">
+                                {item.name}
+                              </div>
+                            </div>
+                            {item.portionUnit && (
+                              <span className="text-[10px] text-amber-400 block ml-5">{item.portionUnit}</span>
+                            )}
+                          </td>
+                          <td className="py-3 px-4 text-stone-400">
+                            {item.categoryName}
+                          </td>
+                          <td className="py-3 px-4 font-mono">
+                            {item.priceHalf ? `₹${item.priceHalf}` : '-'}
+                          </td>
+                          <td className="py-3 px-4 font-mono font-bold text-amber-400">
+                            ₹{item.hasSinglePrice ? item.singlePrice : item.priceFull}
+                          </td>
+                          <td className="py-3 px-4">
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                              inStock
+                                ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                                : 'bg-red-500/20 text-red-400 border border-red-500/30'
+                            }`}>
+                              {inStock ? 'IN STOCK' : 'SOLD OUT'}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              <button
+                                onClick={() => handleOpenEditModal(item)}
+                                className="px-2.5 py-1 rounded-xl text-[11px] font-bold bg-orange-500/10 hover:bg-orange-500/25 text-orange-400 border border-orange-500/30 transition flex items-center gap-1 shadow-sm"
+                                title="Edit Dish Name, Price, Photo, Category & Details"
+                              >
+                                <Pencil className="w-3.5 h-3.5 text-orange-400" />
+                                <span>Edit</span>
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setPhotoEditItem(item);
+                                  setEditingPhotoUrl(item.imageUrl || dishPic);
+                                  setIsPhotoModalOpen(true);
+                                }}
+                                className="px-2.5 py-1 rounded-xl text-[11px] font-bold bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 transition flex items-center gap-1"
+                                title="Change Dish Photo"
+                              >
+                                <Camera className="w-3.5 h-3.5 text-amber-400" />
+                                <span className="hidden sm:inline">Photo</span>
+                              </button>
+                              <button
+                                onClick={() => handleToggleStock(item.id)}
+                                className={`px-2.5 py-1 rounded-xl text-[11px] font-bold transition ${
+                                  inStock
+                                    ? 'bg-stone-800 hover:bg-stone-700 text-stone-300'
+                                    : 'bg-emerald-600 hover:bg-emerald-500 text-white'
+                                }`}
+                              >
+                                {inStock ? 'Out of Stock' : 'In Stock'}
+                              </button>
+                              <button
+                                onClick={() => handleDeleteDish(item.id, item.name)}
+                                className="p-1 rounded-lg text-stone-500 hover:text-red-400 hover:bg-red-950/40 transition"
+                                title="Delete Dish"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB 3: TABLE QR STANDEES */}
+        {activeTab === 'qrs' && (
+          <div className="space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-stone-900/60 p-5 rounded-2xl border border-stone-800">
+              <div>
+                <h3 className="text-base font-bold text-white font-display uppercase">
+                  Table QR Generator &amp; Standee Printing
+                </h3>
+                <p className="text-xs text-stone-400 mt-0.5">
+                  Print high-res QR tent standees for Tables 1 to 20. Scanning automatically opens the menu with that table pre-selected.
+                </p>
+              </div>
+              <button
+                onClick={() => window.print()}
+                className="px-4 py-2 rounded-xl bg-orange-600 hover:bg-orange-500 text-white font-bold text-xs flex items-center gap-2 shadow-glow-tandoor"
+              >
+                <Printer className="w-4 h-4" />
+                <span>Print Standees</span>
+              </button>
+            </div>
+
+            {/* Standee Preview & Table Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
+              
+              {/* Standee Preview Card */}
+              <div className="md:col-span-1 print-standee bg-gradient-to-b from-stone-900 via-stone-950 to-stone-900 p-6 rounded-3xl border-2 border-amber-500/50 shadow-2xl text-center relative overflow-hidden">
+                <div className="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-orange-500 via-amber-400 to-orange-600"></div>
+
+                <div className="flex items-center justify-center gap-2 mb-1">
+                  <div className="w-8 h-8 rounded-xl bg-orange-600 flex items-center justify-center text-white">
+                    <Flame className="w-5 h-5" />
+                  </div>
+                  <span className="text-xs font-black text-amber-400">SVAD</span>
+                </div>
+
+                <h4 className="text-lg font-black text-white uppercase font-display">
+                  Malai Chaap <span className="text-amber-400">Junction</span>
+                </h4>
+                <p className="text-[10px] text-stone-400">
+                  L-127, Sanjay Nagar, Ghaziabad
+                </p>
+
+                <div className="my-3 inline-block bg-gradient-to-r from-orange-600 to-amber-600 text-white font-black text-sm px-5 py-1 rounded-full shadow-glow-tandoor">
+                  Table {previewQrTable}
+                </div>
+
+                <div className="bg-white p-3 rounded-2xl inline-block shadow-xl my-2 border-2 border-amber-400">
+                  <QRCodeSVG
+                    value={`${baseUrl}/?table=${previewQrTable}`}
+                    size={160}
+                    level="H"
+                  />
+                </div>
+
+                <p className="text-xs font-bold text-amber-300 uppercase mt-1">
+                  Scan To View Menu &amp; Order
+                </p>
+                <div className="mt-3 text-[10px] text-stone-400 pt-2 border-t border-stone-800 flex justify-around">
+                  <span>📞 99-1101-3993</span>
+                  <span>100% Pure Veg</span>
+                </div>
+              </div>
+
+              {/* 20 Table Buttons Grid */}
+              <div className="md:col-span-2 space-y-3">
+                <div className="text-xs font-bold text-stone-300 uppercase">
+                  Select Table to Preview:
+                </div>
+                <div className="grid grid-cols-4 sm:grid-cols-5 gap-2.5">
+                  {Array.from({ length: 20 }, (_, i) => i + 1).map(num => (
+                    <button
+                      key={num}
+                      onClick={() => setPreviewQrTable(num)}
+                      className={`h-14 rounded-2xl font-bold flex flex-col items-center justify-center transition ${
+                        previewQrTable === num
+                          ? 'bg-gradient-to-br from-orange-500 to-amber-600 text-white shadow-glow-tandoor scale-105 border-2 border-amber-300'
+                          : 'bg-stone-900 border border-stone-800 text-stone-300 hover:text-white hover:border-orange-500/40'
+                      }`}
+                    >
+                      <span className="text-[10px] text-stone-400 uppercase">Table</span>
+                      <span className="text-base font-black font-display">{num}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+            </div>
+          </div>
+        )}
+
+        {/* TAB 4: STORE INFO & ANALYTICS */}
+        {activeTab === 'analytics' && (
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              
+              {/* Store Details Card */}
+              <div className="p-6 rounded-2xl bg-stone-900/60 border border-stone-800 space-y-4">
+                <h3 className="text-sm font-bold uppercase tracking-wider text-amber-400">
+                  Restaurant Information
+                </h3>
+                <div className="space-y-2 text-xs">
+                  <div>
+                    <span className="text-stone-500 block">Brand Name:</span>
+                    <span className="font-bold text-stone-200">{RESTAURANT_INFO.name}</span>
+                  </div>
+                  <div>
+                    <span className="text-stone-500 block">Address:</span>
+                    <span className="font-bold text-stone-200">{RESTAURANT_INFO.address}</span>
+                  </div>
+                  <div>
+                    <span className="text-stone-500 block">Helpline Numbers:</span>
+                    <span className="font-bold text-stone-200">{RESTAURANT_INFO.phones.join(', ')}</span>
+                  </div>
+                  <div>
+                    <span className="text-stone-500 block">WhatsApp Orders:</span>
+                    <span className="font-bold text-emerald-400">+{RESTAURANT_INFO.whatsapp}</span>
+                  </div>
+                  <div>
+                    <span className="text-stone-500 block">Operating Hours:</span>
+                    <span className="font-bold text-stone-200">{RESTAURANT_INFO.openingHours}</span>
+                  </div>
+                  <div>
+                    <span className="text-stone-500 block">Food Type:</span>
+                    <span className="font-bold text-emerald-400">100% Pure Vegetarian</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Quick Tech Architecture Card */}
+              <div className="p-6 rounded-2xl bg-stone-900/60 border border-stone-800 space-y-4">
+                <h3 className="text-sm font-bold uppercase tracking-wider text-amber-400">
+                  Full Stack Architecture
+                </h3>
+                <div className="space-y-2 text-xs text-stone-300">
+                  <div className="p-2.5 rounded-xl bg-stone-950 border border-stone-800/80">
+                    <span className="font-bold text-orange-400 block">Frontend:</span>
+                    React 18 + Vite + Tailwind CSS + Lucide Icons + QRCode Generator
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-stone-950 border border-stone-800/80">
+                    <span className="font-bold text-amber-400 block">Backend:</span>
+                    Spring Boot 3 + Java 17/25 + RESTful APIs + Data Seeder
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-stone-950 border border-stone-800/80">
+                    <span className="font-bold text-emerald-400 block">Database:</span>
+                    MySQL 8.0 (`malai_chaap_junction_db`) + Spring Data JPA
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        )}
+
+      </main>
+
+      {/* MODAL: ADD NEW DISH (ADMIN DISH BUILDER) */}
+      {isAddModalOpen && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in"
+          onClick={() => setIsAddModalOpen(false)}
+        >
+          <div 
+            className="bg-stone-900 border border-orange-500/40 rounded-3xl p-6 sm:p-7 max-w-lg w-full text-left relative shadow-2xl max-h-[90vh] overflow-y-auto no-scrollbar"
+            onClick={(e) => e.stopPropagation()}
+          >
+            
+            <button
+              onClick={() => setIsAddModalOpen(false)}
+              className="absolute top-5 right-5 w-8 h-8 rounded-full bg-stone-800 text-stone-400 hover:text-white flex items-center justify-center"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="flex items-center gap-2 mb-1">
+              <span className="w-3.5 h-3.5 border border-emerald-500 flex items-center justify-center rounded-sm bg-stone-950 p-0.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 block"></span>
+              </span>
+              <span className="text-xs font-bold text-emerald-400">100% PURE VEG</span>
+            </div>
+
+            <h3 className="text-xl font-black uppercase tracking-wide font-display text-white">
+              Add New Dish To Menu
+            </h3>
+            <p className="text-xs text-stone-400 mt-0.5">
+              Yeh dish live menu me add hokar customer aur QR code par turant dikhegi.
+            </p>
+
+            <form onSubmit={handleCreateDish} className="mt-5 space-y-4 text-xs">
+              
+              {/* Dish Name */}
+              <div>
+                <label className="font-bold text-stone-300 uppercase block mb-1">
+                  Dish Name *
+                </label>
+                <input
+                  type="text"
+                  required
+                  autoFocus
+                  placeholder="e.g. SPECIAL AFGHANI STUFF CHAAP"
+                  value={dishForm.name}
+                  onChange={(e) => setDishForm({ ...dishForm, name: e.target.value })}
+                  className="w-full bg-stone-950 border border-stone-800 rounded-xl px-3.5 py-2.5 text-stone-100 placeholder-stone-600 focus:outline-none focus:border-orange-500 text-sm font-semibold uppercase"
+                />
+              </div>
+
+              {/* Category Select */}
+              <div>
+                <label className="font-bold text-stone-300 uppercase block mb-1">
+                  Category *
+                </label>
+                <select
+                  value={dishForm.categorySlug}
+                  onChange={(e) => setDishForm({ ...dishForm, categorySlug: e.target.value })}
+                  className="w-full bg-stone-950 border border-stone-800 rounded-xl px-3.5 py-2.5 text-stone-100 focus:outline-none focus:border-orange-500 text-sm font-semibold"
+                >
+                  {categories.map((c) => (
+                    <option key={c.id} value={c.slug}>{c.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Price Type (Half/Full vs Single) */}
+              <div>
+                <label className="font-bold text-stone-300 uppercase block mb-1.5">
+                  Pricing Format
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setDishForm({ ...dishForm, priceType: 'half_full' })}
+                    className={`py-2 rounded-xl font-bold border transition ${
+                      dishForm.priceType === 'half_full'
+                        ? 'border-orange-500 bg-orange-950/40 text-orange-400'
+                        : 'border-stone-800 bg-stone-950 text-stone-400'
+                    }`}
+                  >
+                    Half &amp; Full Price
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDishForm({ ...dishForm, priceType: 'single' })}
+                    className={`py-2 rounded-xl font-bold border transition ${
+                      dishForm.priceType === 'single'
+                        ? 'border-orange-500 bg-orange-950/40 text-orange-400'
+                        : 'border-stone-800 bg-stone-950 text-stone-400'
+                    }`}
+                  >
+                    Single Fixed Price
+                  </button>
+                </div>
+              </div>
+
+              {/* Price Inputs */}
+              {dishForm.priceType === 'half_full' ? (
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="font-semibold text-stone-400 block mb-1">Half Price (₹)</label>
+                    <input
+                      type="number"
+                      placeholder="e.g. 150"
+                      value={dishForm.priceHalf}
+                      onChange={(e) => setDishForm({ ...dishForm, priceHalf: e.target.value })}
+                      className="w-full bg-stone-950 border border-stone-800 rounded-xl px-3 py-2 text-stone-100 font-mono text-sm focus:outline-none focus:border-orange-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="font-semibold text-stone-400 block mb-1">Full Price (₹) *</label>
+                    <input
+                      type="number"
+                      required
+                      placeholder="e.g. 220"
+                      value={dishForm.priceFull}
+                      onChange={(e) => setDishForm({ ...dishForm, priceFull: e.target.value })}
+                      className="w-full bg-stone-950 border border-stone-800 rounded-xl px-3 py-2 text-stone-100 font-mono text-sm focus:outline-none focus:border-orange-500"
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <label className="font-semibold text-stone-400 block mb-1">Single Price (₹) *</label>
+                  <input
+                    type="number"
+                    required
+                    placeholder="e.g. 40"
+                    value={dishForm.singlePrice}
+                    onChange={(e) => setDishForm({ ...dishForm, singlePrice: e.target.value })}
+                    className="w-full bg-stone-950 border border-stone-800 rounded-xl px-3 py-2 text-stone-100 font-mono text-sm focus:outline-none focus:border-orange-500"
+                  />
+                </div>
+              )}
+
+              {/* Unit Note & Spice Level */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="font-semibold text-stone-400 block mb-1">
+                    Portion Detail (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. 6/10 pcs, 500 ml"
+                    value={dishForm.portionUnit}
+                    onChange={(e) => setDishForm({ ...dishForm, portionUnit: e.target.value })}
+                    className="w-full bg-stone-950 border border-stone-800 rounded-xl px-3 py-2 text-stone-100 focus:outline-none focus:border-orange-500"
+                  />
+                </div>
+                <div>
+                  <label className="font-semibold text-stone-400 block mb-1">Spice Level</label>
+                  <select
+                    value={dishForm.spiceLevel}
+                    onChange={(e) => setDishForm({ ...dishForm, spiceLevel: e.target.value })}
+                    className="w-full bg-stone-950 border border-stone-800 rounded-xl px-3 py-2 text-stone-100 focus:outline-none focus:border-orange-500"
+                  >
+                    <option value="Mild">🌿 Mild</option>
+                    <option value="Medium">🔥 Medium</option>
+                    <option value="Spicy">🌶️ Spicy</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Highlights Checkboxes */}
+              <div className="flex items-center gap-4 pt-1">
+                <label className="flex items-center gap-2 cursor-pointer font-semibold text-amber-300">
+                  <input
+                    type="checkbox"
+                    checked={dishForm.isChefSpecial}
+                    onChange={(e) => setDishForm({ ...dishForm, isChefSpecial: e.target.checked })}
+                    className="w-4 h-4 rounded accent-orange-500"
+                  />
+                  <span>Chef's Special ✨</span>
+                </label>
+
+                <label className="flex items-center gap-2 cursor-pointer font-semibold text-orange-400">
+                  <input
+                    type="checkbox"
+                    checked={dishForm.isBestseller}
+                    onChange={(e) => setDishForm({ ...dishForm, isBestseller: e.target.checked })}
+                    className="w-4 h-4 rounded accent-orange-500"
+                  />
+                  <span>Bestseller 🔥</span>
+                </label>
+              </div>
+
+              {/* Description */}
+              <div>
+                <label className="font-semibold text-stone-400 block mb-1">
+                  Description (Optional)
+                </label>
+                <textarea
+                  rows="2"
+                  placeholder="e.g. Charcoal roasted rich malai chaap with cardamom and creamy herbs..."
+                  value={dishForm.description}
+                  onChange={(e) => setDishForm({ ...dishForm, description: e.target.value })}
+                  className="w-full bg-stone-950 border border-stone-800 rounded-xl p-3 text-stone-100 placeholder-stone-600 focus:outline-none focus:border-orange-500"
+                />
+              </div>
+
+              {/* Dish Photo Section */}
+              <div className="bg-stone-950/80 p-3.5 rounded-2xl border border-stone-800 space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="font-bold text-amber-400 uppercase flex items-center gap-1.5 text-xs">
+                    <Camera className="w-4 h-4 text-orange-400" />
+                    <span>Dish Photo (Photo Upload Karein / Chunein)</span>
+                  </label>
+                  {dishForm.imageUrl && (
+                    <button
+                      type="button"
+                      onClick={() => setDishForm({ ...dishForm, imageUrl: '' })}
+                      className="text-[11px] text-red-400 hover:text-red-300 font-bold"
+                    >
+                      Remove Photo
+                    </button>
+                  )}
+                </div>
+
+                {/* Live Preview If Selected */}
+                {dishForm.imageUrl ? (
+                  <div className="relative w-full h-36 rounded-xl overflow-hidden border border-orange-500/50 bg-stone-900 shadow-md">
+                    <img
+                      src={dishForm.imageUrl}
+                      alt="Dish preview"
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute bottom-2 left-2 px-2 py-0.5 rounded bg-black/80 text-[10px] text-emerald-400 font-bold">
+                      ✓ Photo Selected
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-[11px] text-stone-500">
+                    Aap camera se photo khinch sakte hain, phone gallery se upload kar sakte hain, ya niche kisi photo par click kar sakte hain.
+                  </div>
+                )}
+
+                {/* Upload from Device / Phone Camera */}
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <label className="cursor-pointer flex-1 py-2 px-3 rounded-xl bg-orange-950/40 hover:bg-orange-950/60 border border-orange-500/40 text-orange-300 text-xs font-bold flex items-center justify-center gap-2 transition text-center shadow-sm">
+                    <Upload className="w-3.5 h-3.5 text-orange-400" />
+                    <span>Phone Camera / Gallery Se Photo Chunein</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => handleFileUpload(e, 'add')}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
+
+                <div className="relative">
+                  <input
+                    type="url"
+                    placeholder="ya online image URL paste karein (https://...)"
+                    value={dishForm.imageUrl}
+                    onChange={(e) => setDishForm({ ...dishForm, imageUrl: e.target.value })}
+                    className="w-full bg-stone-900 border border-stone-800 rounded-xl px-3 py-2 text-stone-100 placeholder-stone-600 text-xs focus:outline-none focus:border-orange-500 font-mono"
+                  />
+                </div>
+
+                {/* 1-Click Quick Food Photo Presets */}
+                <div>
+                  <span className="text-[10px] font-bold text-stone-400 block mb-1.5 uppercase">
+                    ⚡ Quick 1-Click Dish Photo Presets:
+                  </span>
+                  <div className="flex gap-2 overflow-x-auto no-scrollbar py-1">
+                    {ADMIN_IMAGE_PRESETS.map((preset, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => setDishForm({ ...dishForm, imageUrl: preset.url })}
+                        className={`flex-shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-[11px] font-semibold transition ${
+                          dishForm.imageUrl === preset.url
+                            ? 'border-amber-400 bg-amber-500/20 text-amber-300 shadow-sm'
+                            : 'border-stone-800 bg-stone-900 text-stone-300 hover:border-stone-700'
+                        }`}
+                      >
+                        <img src={preset.url} alt={preset.name} className="w-5 h-5 rounded-md object-cover" />
+                        <span>{preset.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Submit Buttons */}
+              <div className="pt-2 flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsAddModalOpen(false)}
+                  className="flex-1 py-3 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-300 font-bold"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingDish}
+                  className="flex-1 py-3 rounded-xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-black shadow-glow-tandoor transition disabled:opacity-50"
+                >
+                  {isSavingDish ? 'Adding Dish...' : 'Save & Publish Dish'}
+                </button>
+              </div>
+
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: EDIT DISH PHOTO (FOR EXISTING DISHES) */}
+      {isPhotoModalOpen && photoEditItem && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm animate-fade-in"
+          onClick={() => setIsPhotoModalOpen(false)}
+        >
+          <div 
+            className="bg-stone-900 border border-amber-500/50 rounded-3xl p-6 max-w-md w-full text-left relative shadow-2xl max-h-[90vh] overflow-y-auto no-scrollbar"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setIsPhotoModalOpen(false)}
+              className="absolute top-5 right-5 w-8 h-8 rounded-full bg-stone-800 text-stone-400 hover:text-white flex items-center justify-center"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="flex items-center gap-2 mb-1">
+              <Camera className="w-4 h-4 text-amber-400" />
+              <span className="text-xs font-bold text-amber-400 uppercase tracking-wider">Dish Photo Studio</span>
+            </div>
+
+            <h3 className="text-lg font-black uppercase tracking-wide font-display text-white">
+              {photoEditItem.name}
+            </h3>
+            <p className="text-xs text-stone-400 mt-0.5">
+              Nayi photo upload karein ya preset me se chunein. Yeh turant live menu par lag jayegi.
+            </p>
+
+            {/* Photo Preview */}
+            <div className="mt-4 relative w-full h-44 rounded-2xl overflow-hidden border-2 border-amber-500/40 bg-stone-950 shadow-inner">
+              <img
+                src={editingPhotoUrl || getDishImageUrl(photoEditItem)}
+                alt={photoEditItem.name}
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  e.target.onerror = null;
+                  e.target.src = 'https://images.unsplash.com/photo-1626777552726-4a6b54c97e46?auto=format&fit=crop&w=700&q=80';
+                }}
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent"></div>
+              <div className="absolute bottom-2 left-3 right-3 flex items-center justify-between text-xs">
+                <span className="font-bold text-white uppercase">{photoEditItem.categoryName}</span>
+                <span className="font-mono text-amber-400 font-bold">
+                  ₹{photoEditItem.hasSinglePrice ? photoEditItem.singlePrice : photoEditItem.priceFull}
+                </span>
+              </div>
+            </div>
+
+            {/* Action 1: Upload from device / camera */}
+            <div className="mt-4 space-y-3">
+              <label className="cursor-pointer w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-glow-tandoor transition">
+                <Upload className="w-4 h-4" />
+                <span>Phone Camera / Gallery Se Photo Upload Karein</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => handleFileUpload(e, 'edit')}
+                  className="hidden"
+                />
+              </label>
+
+              {/* Action 2: Image URL input */}
+              <div>
+                <label className="text-[11px] font-bold text-stone-400 block mb-1">
+                  Ya Image Link (URL) Paste Karein:
+                </label>
+                <input
+                  type="url"
+                  placeholder="https://..."
+                  value={editingPhotoUrl}
+                  onChange={(e) => setEditingPhotoUrl(e.target.value)}
+                  className="w-full bg-stone-950 border border-stone-800 rounded-xl px-3 py-2 text-stone-100 placeholder-stone-600 text-xs font-mono focus:outline-none focus:border-orange-500"
+                />
+              </div>
+
+              {/* Action 3: Presets Grid */}
+              <div>
+                <label className="text-[11px] font-bold text-stone-400 block mb-1.5 uppercase">
+                  ⚡ Ya Fast Preset Chunein:
+                </label>
+                <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto no-scrollbar p-1 bg-stone-950/60 rounded-xl border border-stone-800/80">
+                  {ADMIN_IMAGE_PRESETS.map((preset, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => setEditingPhotoUrl(preset.url)}
+                      className={`flex items-center gap-2 p-1.5 rounded-lg border text-left text-[11px] font-semibold transition ${
+                        editingPhotoUrl === preset.url
+                          ? 'border-amber-400 bg-amber-500/20 text-amber-300'
+                          : 'border-stone-800 bg-stone-900 text-stone-300 hover:border-stone-700'
+                      }`}
+                    >
+                      <img src={preset.url} alt={preset.name} className="w-7 h-7 rounded-md object-cover flex-shrink-0" />
+                      <span className="truncate">{preset.name}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Buttons */}
+            <div className="mt-5 flex gap-3">
+              <button
+                type="button"
+                onClick={() => setIsPhotoModalOpen(false)}
+                className="flex-1 py-2.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-300 font-bold text-xs"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSavePhoto}
+                disabled={isUpdatingPhoto}
+                className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs shadow-md transition disabled:opacity-50"
+              >
+                {isUpdatingPhoto ? 'Saving Photo...' : '✓ Set & Save Photo'}
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: FULL EDIT DISH DETAILS (NAME, PRICE, CATEGORY, PHOTO, STOCK, ETC.) */}
+      {isEditModalOpen && editingDishItem && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm animate-fade-in"
+          onClick={() => setIsEditModalOpen(false)}
+        >
+          <div 
+            className="bg-stone-900 border border-orange-500/50 rounded-3xl p-6 sm:p-7 max-w-xl w-full text-left relative shadow-2xl max-h-[92vh] overflow-y-auto no-scrollbar"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setIsEditModalOpen(false)}
+              className="absolute top-5 right-5 w-8 h-8 rounded-full bg-stone-800 text-stone-400 hover:text-white flex items-center justify-center transition"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="flex items-center gap-2 mb-1">
+              <Pencil className="w-4 h-4 text-orange-400" />
+              <span className="text-xs font-bold text-orange-400 uppercase tracking-wider">Edit Dish Details</span>
+            </div>
+
+            <h3 className="text-xl font-black uppercase tracking-wide font-display text-white">
+              {editingDishItem.name}
+            </h3>
+            <p className="text-xs text-stone-400 mt-0.5">
+              Dish ka naam, price, photo, category, spice level aur stock status update karein.
+            </p>
+
+            <form onSubmit={handleSaveEditDish} className="mt-5 space-y-4">
+              
+              {/* Dish Name */}
+              <div>
+                <label className="text-xs font-bold text-stone-300 block mb-1">
+                  Dish Ka Naam <span className="text-orange-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. AFGHANI CHAAP / DAL MAKHANI"
+                  value={editForm.name}
+                  onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                  className="w-full bg-stone-950 border border-stone-800 rounded-xl px-3.5 py-2.5 text-stone-100 placeholder-stone-600 text-sm focus:outline-none focus:border-orange-500 uppercase font-semibold"
+                />
+              </div>
+
+              {/* Category & Stock Status in a 2-col row */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-bold text-stone-300 block mb-1">
+                    Category <span className="text-orange-500">*</span>
+                  </label>
+                  <select
+                    value={editForm.categorySlug}
+                    onChange={(e) => setEditForm({ ...editForm, categorySlug: e.target.value })}
+                    className="w-full bg-stone-950 border border-stone-800 rounded-xl px-3.5 py-2.5 text-stone-100 text-xs font-semibold focus:outline-none focus:border-orange-500"
+                  >
+                    {categories.map((c) => (
+                      <option key={c.id || c.slug} value={c.slug}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-stone-300 block mb-1">
+                    Stock Status (Customer Menu Me Dikhega)
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setEditForm(prev => ({ ...prev, isAvailable: !prev.isAvailable }))}
+                    className={`w-full py-2.5 px-3 rounded-xl border text-xs font-bold flex items-center justify-between transition ${
+                      editForm.isAvailable
+                        ? 'border-emerald-500/40 bg-emerald-950/30 text-emerald-400'
+                        : 'border-red-500/40 bg-red-950/30 text-red-400'
+                    }`}
+                  >
+                    <span className="flex items-center gap-1.5">
+                      <span className={`w-2 h-2 rounded-full ${editForm.isAvailable ? 'bg-emerald-500' : 'bg-red-500'}`}></span>
+                      {editForm.isAvailable ? 'In Stock (Available)' : 'Out of Stock (Sold Out)'}
+                    </span>
+                    <span className="text-[10px] underline">Toggle</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Pricing Type Selector */}
+              <div className="bg-stone-950 p-3.5 rounded-2xl border border-stone-800 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-stone-300">Pricing Mode:</span>
+                  <div className="flex bg-stone-900 rounded-xl p-0.5 border border-stone-800 text-xs font-bold">
+                    <button
+                      type="button"
+                      onClick={() => setEditForm({ ...editForm, priceType: 'half_full' })}
+                      className={`px-3 py-1 rounded-lg transition ${
+                        editForm.priceType === 'half_full'
+                          ? 'bg-gradient-to-r from-orange-600 to-amber-600 text-white shadow-sm'
+                          : 'text-stone-400 hover:text-white'
+                      }`}
+                    >
+                      Half &amp; Full
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEditForm({ ...editForm, priceType: 'single' })}
+                      className={`px-3 py-1 rounded-lg transition ${
+                        editForm.priceType === 'single'
+                          ? 'bg-gradient-to-r from-orange-600 to-amber-600 text-white shadow-sm'
+                          : 'text-stone-400 hover:text-white'
+                      }`}
+                    >
+                      Single Price
+                    </button>
+                  </div>
+                </div>
+
+                {editForm.priceType === 'half_full' ? (
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-[11px] font-bold text-stone-400 block mb-1">
+                        Half Price (₹)
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="1"
+                        placeholder="e.g. 150"
+                        value={editForm.priceHalf}
+                        onChange={(e) => setEditForm({ ...editForm, priceHalf: e.target.value })}
+                        className="w-full bg-stone-900 border border-stone-800 rounded-xl px-3 py-2 text-stone-100 placeholder-stone-600 text-xs font-mono focus:outline-none focus:border-orange-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[11px] font-bold text-stone-400 block mb-1">
+                        Full Price (₹) <span className="text-orange-500">*</span>
+                      </label>
+                      <input
+                        type="number"
+                        required
+                        min="0"
+                        step="1"
+                        placeholder="e.g. 270"
+                        value={editForm.priceFull}
+                        onChange={(e) => setEditForm({ ...editForm, priceFull: e.target.value })}
+                        className="w-full bg-stone-900 border border-stone-800 rounded-xl px-3 py-2 text-stone-100 placeholder-stone-600 text-xs font-mono focus:outline-none focus:border-orange-500"
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <label className="text-[11px] font-bold text-stone-400 block mb-1">
+                      Dish Price (₹) <span className="text-orange-500">*</span>
+                    </label>
+                    <input
+                      type="number"
+                      required
+                      min="0"
+                      step="1"
+                      placeholder="e.g. 190"
+                      value={editForm.singlePrice}
+                      onChange={(e) => setEditForm({ ...editForm, singlePrice: e.target.value })}
+                      className="w-full bg-stone-900 border border-stone-800 rounded-xl px-3 py-2 text-stone-100 placeholder-stone-600 text-xs font-mono focus:outline-none focus:border-orange-500"
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Portion Unit & Spice Level */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-bold text-stone-300 block mb-1">
+                    Portion Details / Pieces
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. 6 pcs / 10 pcs ya with 2 Rumali"
+                    value={editForm.portionUnit}
+                    onChange={(e) => setEditForm({ ...editForm, portionUnit: e.target.value })}
+                    className="w-full bg-stone-950 border border-stone-800 rounded-xl px-3 py-2 text-stone-100 placeholder-stone-600 text-xs focus:outline-none focus:border-orange-500"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-stone-300 block mb-1">
+                    Spice Level
+                  </label>
+                  <select
+                    value={editForm.spiceLevel}
+                    onChange={(e) => setEditForm({ ...editForm, spiceLevel: e.target.value })}
+                    className="w-full bg-stone-950 border border-stone-800 rounded-xl px-3 py-2 text-stone-100 text-xs focus:outline-none focus:border-orange-500"
+                  >
+                    <option value="Mild">🌿 Mild (Sweet / Creamy)</option>
+                    <option value="Medium">🔥 Medium (Balanced Tandoori)</option>
+                    <option value="Spicy">🌶️ Spicy (Teekha / Hot)</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Tags: Chef's Special & Bestseller */}
+              <div className="flex items-center gap-4 pt-1">
+                <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-stone-300">
+                  <input
+                    type="checkbox"
+                    checked={editForm.isChefSpecial}
+                    onChange={(e) => setEditForm({ ...editForm, isChefSpecial: e.target.checked })}
+                    className="w-4 h-4 rounded text-orange-600 bg-stone-950 border-stone-800 focus:ring-orange-500"
+                  />
+                  <span>✨ Chef's Special Dish</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-stone-300">
+                  <input
+                    type="checkbox"
+                    checked={editForm.isBestseller}
+                    onChange={(e) => setEditForm({ ...editForm, isBestseller: e.target.checked })}
+                    className="w-4 h-4 rounded text-orange-600 bg-stone-950 border-stone-800 focus:ring-orange-500"
+                  />
+                  <span>🔥 Bestseller Badge</span>
+                </label>
+              </div>
+
+              {/* Dish Photo Section */}
+              <div className="bg-stone-950 p-3.5 rounded-2xl border border-stone-800 space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-stone-300 flex items-center gap-1.5">
+                    <Camera className="w-3.5 h-3.5 text-amber-400" />
+                    <span>Dish Photo (Upload ya Choose)</span>
+                  </label>
+                  {editForm.imageUrl && (
+                    <button
+                      type="button"
+                      onClick={() => setEditForm({ ...editForm, imageUrl: '' })}
+                      className="text-[10px] text-red-400 hover:underline"
+                    >
+                      Clear Photo
+                    </button>
+                  )}
+                </div>
+
+                {/* Photo Preview */}
+                <div className="relative w-full h-32 rounded-xl overflow-hidden border border-amber-500/30 bg-stone-900 shadow-inner">
+                  <img
+                    src={editForm.imageUrl || getDishImageUrl({ name: editForm.name, categorySlug: editForm.categorySlug, imageUrl: '' })}
+                    alt={editForm.name || 'Dish preview'}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      e.target.onerror = null;
+                      e.target.src = 'https://images.unsplash.com/photo-1626777552726-4a6b54c97e46?auto=format&fit=crop&w=600&q=80';
+                    }}
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent"></div>
+                  <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between text-[11px]">
+                    <span className="font-bold text-white uppercase truncate">{editForm.name || 'Preview'}</span>
+                    <span className="font-mono text-amber-400 font-bold flex-shrink-0">
+                      ₹{editForm.priceType === 'single' ? (editForm.singlePrice || 0) : (editForm.priceFull || 0)}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Upload Button */}
+                <label className="cursor-pointer w-full py-2 px-3 rounded-xl bg-stone-900 hover:bg-stone-850 text-stone-200 border border-stone-800 hover:border-amber-500/40 font-bold text-xs flex items-center justify-center gap-2 transition">
+                  <Upload className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Phone Camera / Gallery Se Photo Upload Karein</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => handleFileUpload(e, 'edit_dish')}
+                    className="hidden"
+                  />
+                </label>
+
+                {/* URL Input */}
+                <input
+                  type="url"
+                  placeholder="ya online image URL paste karein (https://...)"
+                  value={editForm.imageUrl}
+                  onChange={(e) => setEditForm({ ...editForm, imageUrl: e.target.value })}
+                  className="w-full bg-stone-900 border border-stone-800 rounded-xl px-3 py-2 text-stone-100 placeholder-stone-600 text-xs focus:outline-none focus:border-orange-500 font-mono"
+                />
+
+                {/* Fast Presets Slider */}
+                <div>
+                  <span className="text-[10px] font-bold text-stone-400 block mb-1 uppercase">
+                    ⚡ Quick 1-Click Dish Photo Presets:
+                  </span>
+                  <div className="flex gap-2 overflow-x-auto no-scrollbar py-1">
+                    {ADMIN_IMAGE_PRESETS.map((preset, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => setEditForm({ ...editForm, imageUrl: preset.url })}
+                        className={`flex-shrink-0 flex items-center gap-1.5 px-2 py-1 rounded-xl border text-[11px] font-semibold transition ${
+                          editForm.imageUrl === preset.url
+                            ? 'border-amber-400 bg-amber-500/20 text-amber-300 shadow-sm'
+                            : 'border-stone-800 bg-stone-900 text-stone-300 hover:border-stone-700'
+                        }`}
+                      >
+                        <img src={preset.url} alt={preset.name} className="w-5 h-5 rounded-md object-cover" />
+                        <span>{preset.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Description */}
+              <div>
+                <label className="text-xs font-bold text-stone-300 block mb-1">
+                  Dish Description (Ingredients, Flavour Notes)
+                </label>
+                <textarea
+                  rows="2"
+                  placeholder="e.g. Soya chaap marinated in rich cashew cream and char-grilled in tandoor."
+                  value={editForm.description}
+                  onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                  className="w-full bg-stone-950 border border-stone-800 rounded-xl px-3 py-2 text-stone-100 placeholder-stone-600 text-xs focus:outline-none focus:border-orange-500 resize-none"
+                />
+              </div>
+
+              {/* Action Buttons */}
+              <div className="pt-2 flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsEditModalOpen(false)}
+                  className="flex-1 py-3 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-300 font-bold text-xs"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingEdit}
+                  className="flex-1 py-3 rounded-xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-black text-xs shadow-glow-tandoor transition disabled:opacity-50"
+                >
+                  {isSavingEdit ? 'Saving Changes...' : '✓ Save All Changes'}
+                </button>
+              </div>
+
+            </form>
+          </div>
+        </div>
+      )}
+
+    </div>
+  );
+}
