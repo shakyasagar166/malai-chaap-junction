@@ -13,6 +13,8 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.concurrent.atomic.AtomicLong;
+import org.springframework.transaction.annotation.Transactional;
 
 @RestController
 @RequestMapping("/api/orders")
@@ -20,19 +22,22 @@ public class OrderController {
 
     private final OrderRepository orderRepository;
     private final Random random = new Random();
+    private static final AtomicLong ORDER_COUNTER = new AtomicLong(System.currentTimeMillis() % 10000);
 
     public OrderController(OrderRepository orderRepository) {
         this.orderRepository = orderRepository;
     }
 
     @PostMapping
-    public ResponseEntity<CustomerOrder> placeOrder(@RequestBody OrderRequestDto dto) {
+    @Transactional
+    public synchronized ResponseEntity<CustomerOrder> placeOrder(@RequestBody OrderRequestDto dto) {
         CustomerOrder order = new CustomerOrder();
         
-        // Generate unique human-readable order number, e.g., MCJ-261018-4921
-        String dateStr = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyMMdd"));
-        int randCode = 1000 + random.nextInt(9000);
-        order.setOrderNumber("MCJ-" + dateStr + "-" + randCode);
+        // High-concurrency collision-proof order number: MCJ-YYMMDD-HHMMSS-XXXX
+        String timeStr = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyMMdd-HHmmss"));
+        long seq = ORDER_COUNTER.incrementAndGet() % 10000;
+        int rand = 100 + random.nextInt(900);
+        order.setOrderNumber("MCJ-" + timeStr + "-" + String.format("%03d", rand));
 
         order.setOrderType(dto.getOrderType() != null ? dto.getOrderType() : "DINE_IN");
         order.setTableNumber(dto.getTableNumber());

@@ -110,7 +110,8 @@ export default function AdminDashboard({ onNavigateToMenu }) {
   // Sound & Real-time Notification Alert State
   const [soundEnabled, setSoundEnabled] = useState(() => isBellSoundEnabled());
   const [latestNewOrder, setLatestNewOrder] = useState(null);
-  const lastSeenOrderIdRef = useRef(null);
+  const knownOrderIdsRef = useRef(new Set());
+  const isInitialLoadRef = useRef(true);
 
   // Load orders, menu & stats
   const refreshData = async () => {
@@ -119,16 +120,31 @@ export default function AdminDashboard({ onNavigateToMenu }) {
       setOrders(ordersData);
 
       // Check for incoming new orders to ring the counter bell & trigger persistent toast
-      if (Array.isArray(ordersData) && ordersData.length > 0) {
-        if (lastSeenOrderIdRef.current !== null) {
-          const freshOrders = ordersData.filter(o => o.id > lastSeenOrderIdRef.current);
+      if (Array.isArray(ordersData)) {
+        if (isInitialLoadRef.current) {
+          // On first load, remember existing orders so we don't bell for past orders
+          knownOrderIdsRef.current = new Set(ordersData.map(o => String(o.id)));
+          isInitialLoadRef.current = false;
+        } else {
+          // Find any order whose ID was not in knownOrderIdsRef
+          const freshOrders = ordersData.filter(o => !knownOrderIdsRef.current.has(String(o.id)));
           if (freshOrders.length > 0) {
+            freshOrders.forEach(o => knownOrderIdsRef.current.add(String(o.id)));
             playOrderBellSound();
             setLatestNewOrder(freshOrders[0]);
+
+            // Browser Web Notification API (shows system banner even if tab is in background)
+            if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+              const o = freshOrders[0];
+              try {
+                new Notification('🔔 Svad Malai Chaap: Naya Order!', {
+                  body: `${o.orderType === 'DINE_IN' ? 'Table #' + (o.tableNumber || '-') : 'Takeaway'} | Total: ₹${o.total}`,
+                  icon: '/vite.svg'
+                });
+              } catch (e) {}
+            }
           }
         }
-        const maxId = Math.max(...ordersData.map(o => (typeof o.id === 'number' ? o.id : 0)), 0);
-        lastSeenOrderIdRef.current = Math.max(lastSeenOrderIdRef.current || 0, maxId);
       }
 
       const statsData = await restaurantApi.getAdminStats();
@@ -143,8 +159,13 @@ export default function AdminDashboard({ onNavigateToMenu }) {
   };
 
   useEffect(() => {
+    // Request browser notification permission once on dashboard load
+    if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission().catch(() => {});
+    }
+
     refreshData();
-    const interval = setInterval(refreshData, 4000); // 4-second fast polling for real-time orders
+    const interval = setInterval(refreshData, 2500); // 2.5-second fast polling for real-time orders
 
     // Real-time cross-tab storage listener (immediate ring when customer places order in another tab)
     const handleStorageEvent = (e) => {
