@@ -1285,85 +1285,119 @@ export default function AdminDashboard({ onNavigateToMenu }) {
                         </div>
                       </div>
 
-                      {/* In-Card Status Control Bar */}
-                      <div className="mt-4 pt-3.5 border-t border-stone-800/80 space-y-2.5">
-                        <div className="flex items-center justify-between text-[11px] font-bold text-stone-400">
-                          <span className="flex items-center gap-1.5 text-stone-300">
-                            <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
-                            Order Status Change Karein:
-                          </span>
-                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase border ${
-                            order.status === 'PENDING'
-                              ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
-                              : order.status === 'PREPARING'
-                              ? 'bg-orange-500/20 text-orange-300 border-orange-500/40'
-                              : order.status === 'SERVED'
-                              ? 'bg-blue-500/20 text-blue-300 border-blue-500/40'
-                              : order.status === 'COMPLETED'
-                              ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40'
-                              : 'bg-red-500/20 text-red-400 border-red-500/40'
-                          }`}>
-                            {order.status}
-                          </span>
-                        </div>
-
-                        {/* Status Action Buttons Grid inside this card */}
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
-                          <button
-                            onClick={() => handleUpdateStatus(order.id, 'PENDING')}
-                            className={`py-2 px-2 rounded-xl text-xs font-black transition flex items-center justify-center gap-1.5 ${
-                              order.status === 'PENDING'
-                                ? 'bg-gradient-to-r from-amber-500 to-yellow-500 text-black shadow-lg ring-2 ring-amber-300 scale-[1.02]'
-                                : 'bg-stone-800/90 text-stone-300 hover:bg-stone-700 hover:text-white border border-stone-700/60'
-                            }`}
-                            title="Status ko Pending set karein"
-                          >
-                            <Clock className="w-3.5 h-3.5" />
-                            <span>Pending</span>
-                          </button>
-
-                          <button
-                            onClick={() => handleUpdateStatus(order.id, 'PREPARING')}
-                            className={`py-2 px-2 rounded-xl text-xs font-black transition flex items-center justify-center gap-1.5 ${
-                              order.status === 'PREPARING'
-                                ? 'bg-gradient-to-r from-orange-600 to-amber-600 text-white shadow-glow-tandoor ring-2 ring-orange-400 scale-[1.02]'
-                                : 'bg-stone-800/90 text-stone-300 hover:bg-orange-950/40 hover:text-orange-300 border border-stone-700/60'
-                            }`}
-                            title="Kitchen me Preparing mark karein"
-                          >
-                            <Flame className="w-3.5 h-3.5" />
-                            <span>Preparing</span>
-                          </button>
-
+                      {/* In-Card Status & Next Action Control Bar */}
+                      <div className="mt-4 pt-3.5 border-t border-stone-800/80 space-y-3">
+                        
+                        {/* 1. BIG PROMINENT NEXT-ACTION BUTTON */}
+                        {order.status === 'PREPARING' && (
                           <button
                             onClick={() => handleUpdateStatus(order.id, 'SERVED')}
-                            className={`py-2 px-2 rounded-xl text-xs font-black transition flex items-center justify-center gap-1.5 ${
-                              order.status === 'SERVED'
-                                ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-lg ring-2 ring-blue-300 scale-[1.02]'
-                                : 'bg-stone-800/90 text-stone-300 hover:bg-blue-950/40 hover:text-blue-300 border border-stone-700/60'
-                            }`}
-                            title="Table par Served mark karein"
+                            className="w-full py-3 px-4 rounded-2xl bg-gradient-to-r from-blue-600 via-cyan-600 to-teal-500 hover:from-blue-500 hover:to-teal-400 text-white font-black text-sm shadow-xl flex items-center justify-center gap-2.5 transition active:scale-98 animate-pulse"
+                            title="Khana tandoor se ban gaya! Table par Served mark karein"
                           >
-                            <Utensils className="w-3.5 h-3.5" />
-                            <span>Served</span>
+                            <Utensils className="w-5 h-5 flex-shrink-0" />
+                            <span>Khana Ready! Mark as SERVED (Table Par Bhejo) ➔</span>
                           </button>
+                        )}
 
+                        {order.status === 'PENDING' && (
+                          <button
+                            onClick={() => handleUpdateStatus(order.id, 'PREPARING')}
+                            className="w-full py-3 px-4 rounded-2xl bg-gradient-to-r from-orange-600 via-orange-500 to-amber-500 hover:from-orange-500 hover:to-amber-400 text-white font-black text-sm shadow-glow-tandoor flex items-center justify-center gap-2.5 transition active:scale-98"
+                            title="Kitchen me order bhejo aur tandoor par prepare karein"
+                          >
+                            <Flame className="w-5 h-5 flex-shrink-0" />
+                            <span>Kitchen Me Bhejo (Start PREPARING) 🔥 ➔</span>
+                          </button>
+                        )}
+
+                        {order.status === 'SERVED' && (
                           <button
                             onClick={() => handleUpdateStatus(order.id, 'COMPLETED')}
-                            className={`py-2 px-2 rounded-xl text-xs font-black transition flex items-center justify-center gap-1.5 ${
-                              order.status === 'COMPLETED'
-                                ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-lg ring-2 ring-emerald-300 scale-[1.02]'
-                                : 'bg-stone-800/90 text-stone-300 hover:bg-emerald-950/40 hover:text-emerald-300 border border-stone-700/60'
-                            }`}
-                            title="Order Complete mark karein"
+                            className="w-full py-3 px-4 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 hover:from-emerald-500 hover:to-teal-400 text-white font-black text-sm shadow-xl flex items-center justify-center gap-2.5 transition active:scale-98"
+                            title="Order poora ho gaya & bill pay ho gaya"
                           >
-                            <CheckCircle2 className="w-3.5 h-3.5" />
-                            <span>Complete</span>
+                            <CheckCircle2 className="w-5 h-5 flex-shrink-0" />
+                            <span>Order Complete &amp; Bill Paid (COMPLETE) ✅ ➔</span>
                           </button>
+                        )}
+
+                        {order.status === 'COMPLETED' && (
+                          <div className="py-2.5 px-3 rounded-xl bg-emerald-950/60 border border-emerald-500/40 text-emerald-300 text-xs font-bold flex items-center justify-center gap-2">
+                            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                            <span>Order Safaltapoorvak Complete Ho Chuka Hai</span>
+                          </div>
+                        )}
+
+                        {/* 2. DIRECT STATUS CHANGER (Manual override buttons for all 4 states) */}
+                        <div className="space-y-1.5 pt-1">
+                          <div className="flex items-center justify-between text-[11px] font-bold text-stone-400">
+                            <span className="flex items-center gap-1.5 text-stone-300">
+                              <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+                              Order Status:
+                            </span>
+                            <span className="text-[10px] text-stone-500">
+                              (Click to switch status anytime)
+                            </span>
+                          </div>
+
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                            <button
+                              onClick={() => handleUpdateStatus(order.id, 'PENDING')}
+                              className={`py-2 px-1.5 rounded-xl text-xs font-black transition flex items-center justify-center gap-1 ${
+                                order.status === 'PENDING'
+                                  ? 'bg-gradient-to-r from-amber-500 to-yellow-500 text-black shadow-lg ring-2 ring-amber-300 scale-[1.02]'
+                                  : 'bg-stone-800/90 text-stone-300 hover:bg-stone-700 hover:text-white border border-stone-700/60'
+                              }`}
+                              title="Status ko Pending set karein"
+                            >
+                              <Clock className="w-3.5 h-3.5" />
+                              <span>Pending</span>
+                            </button>
+
+                            <button
+                              onClick={() => handleUpdateStatus(order.id, 'PREPARING')}
+                              className={`py-2 px-1.5 rounded-xl text-xs font-black transition flex items-center justify-center gap-1 ${
+                                order.status === 'PREPARING'
+                                  ? 'bg-gradient-to-r from-orange-600 to-amber-600 text-white shadow-glow-tandoor ring-2 ring-orange-400 scale-[1.02]'
+                                  : 'bg-stone-800/90 text-stone-300 hover:bg-orange-950/40 hover:text-orange-300 border border-stone-700/60'
+                              }`}
+                              title="Kitchen me Preparing mark karein"
+                            >
+                              <Flame className="w-3.5 h-3.5" />
+                              <span>Preparing</span>
+                            </button>
+
+                            <button
+                              onClick={() => handleUpdateStatus(order.id, 'SERVED')}
+                              className={`py-2 px-1.5 rounded-xl text-xs font-black transition flex items-center justify-center gap-1 ${
+                                order.status === 'SERVED'
+                                  ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-lg ring-2 ring-blue-300 scale-[1.02]'
+                                  : 'bg-stone-800/90 text-stone-300 hover:bg-blue-950/40 hover:text-blue-300 border border-stone-700/60'
+                              }`}
+                              title="Table par Served mark karein"
+                            >
+                              <Utensils className="w-3.5 h-3.5" />
+                              <span>Served</span>
+                            </button>
+
+                            <button
+                              onClick={() => handleUpdateStatus(order.id, 'COMPLETED')}
+                              className={`py-2 px-1.5 rounded-xl text-xs font-black transition flex items-center justify-center gap-1 ${
+                                order.status === 'COMPLETED'
+                                  ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-lg ring-2 ring-emerald-300 scale-[1.02]'
+                                  : 'bg-stone-800/90 text-stone-300 hover:bg-emerald-950/40 hover:text-emerald-300 border border-stone-700/60'
+                              }`}
+                              title="Order Complete mark karein"
+                            >
+                              <CheckCircle2 className="w-3.5 h-3.5" />
+                              <span>Complete</span>
+                            </button>
+                          </div>
                         </div>
 
                         {/* Card Bottom Row: Reject & Delete */}
-                        <div className="flex items-center justify-between gap-2 pt-1.5 text-xs">
+                        <div className="flex items-center justify-between gap-2 pt-1 text-xs">
                           {order.status !== 'CANCELLED' ? (
                             <button
                               onClick={() => handleRejectFakeOrder(order.id, order.tableNumber)}
@@ -1727,21 +1761,53 @@ export default function AdminDashboard({ onNavigateToMenu }) {
                         </div>
 
                         {/* Fast Status Change Row */}
-                        <div className="flex items-center gap-1.5 pt-1 border-t border-stone-800/60 overflow-x-auto no-scrollbar">
-                          <span className="text-[10px] text-stone-500 font-semibold mr-1">Status:</span>
-                          {['PENDING', 'PREPARING', 'SERVED', 'COMPLETED'].map(st => (
+                        <div className="flex items-center justify-between gap-1.5 pt-1.5 border-t border-stone-800/60 flex-wrap">
+                          {o.status === 'PREPARING' && (
                             <button
-                              key={st}
-                              onClick={() => handleUpdateStatus(o.id, st)}
-                              className={`py-1 px-2 rounded-lg text-[10px] font-bold transition whitespace-nowrap ${
-                                o.status === st
-                                  ? 'bg-amber-500 text-black font-black shadow-sm'
-                                  : 'bg-stone-800/80 text-stone-400 hover:text-white'
-                              }`}
+                              onClick={() => handleUpdateStatus(o.id, 'SERVED')}
+                              className="py-1 px-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-black text-[11px] transition flex items-center gap-1 shadow-md"
+                              title="Table par Served mark karein"
                             >
-                              {st === 'PENDING' ? 'Pending' : st === 'PREPARING' ? 'Preparing' : st === 'SERVED' ? 'Served' : 'Complete'}
+                              <Utensils className="w-3 h-3" />
+                              <span>Mark Served 🍽️ ➔</span>
                             </button>
-                          ))}
+                          )}
+                          {o.status === 'PENDING' && (
+                            <button
+                              onClick={() => handleUpdateStatus(o.id, 'PREPARING')}
+                              className="py-1 px-2.5 rounded-xl bg-orange-600 hover:bg-orange-500 text-white font-black text-[11px] transition flex items-center gap-1 shadow-md"
+                              title="Kitchen me Preparing mark karein"
+                            >
+                              <Flame className="w-3 h-3" />
+                              <span>Send to Kitchen 🔥 ➔</span>
+                            </button>
+                          )}
+                          {o.status === 'SERVED' && (
+                            <button
+                              onClick={() => handleUpdateStatus(o.id, 'COMPLETED')}
+                              className="py-1 px-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-[11px] transition flex items-center gap-1 shadow-md"
+                              title="Order Complete mark karein"
+                            >
+                              <CheckCircle2 className="w-3 h-3" />
+                              <span>Mark Complete ✅ ➔</span>
+                            </button>
+                          )}
+
+                          <div className="flex items-center gap-1 ml-auto overflow-x-auto no-scrollbar">
+                            {['PENDING', 'PREPARING', 'SERVED', 'COMPLETED'].map(st => (
+                              <button
+                                key={st}
+                                onClick={() => handleUpdateStatus(o.id, st)}
+                                className={`py-0.5 px-2 rounded-lg text-[10px] font-bold transition whitespace-nowrap ${
+                                  o.status === st
+                                    ? 'bg-amber-500 text-black font-black'
+                                    : 'bg-stone-800/80 text-stone-400 hover:text-white'
+                                }`}
+                              >
+                                {st === 'PENDING' ? 'Pending' : st === 'PREPARING' ? 'Preparing' : st === 'SERVED' ? 'Served' : 'Complete'}
+                              </button>
+                            ))}
+                          </div>
                         </div>
                       </div>
                     ))}
