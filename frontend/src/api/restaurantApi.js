@@ -370,11 +370,14 @@ export const restaurantApi = {
       const data = await res.json();
       return (Array.isArray(data) ? data : []).map(order => {
         const verify = parseVerificationFromOrder(order);
-        const override = verOverrides[order.id] || {};
+        const override = verOverrides[order.id] || verOverrides[String(order.id)] || {};
+        const isVerifiedStatus = order.status === 'VERIFIED' || order.status === 'PREPARING' || order.status === 'SERVED';
+        const finalVerification = isVerifiedStatus ? 'VERIFIED_ACCEPTED' : (override.verificationStatus || verify.verificationStatus);
         return {
           ...order,
           ...verify,
-          ...override
+          ...override,
+          verificationStatus: finalVerification
         };
       });
     } catch (err) {
@@ -384,11 +387,14 @@ export const restaurantApi = {
         : savedOrders;
       return list.map(order => {
         const verify = parseVerificationFromOrder(order);
-        const override = verOverrides[order.id] || {};
+        const override = verOverrides[order.id] || verOverrides[String(order.id)] || {};
+        const isVerifiedStatus = order.status === 'VERIFIED' || order.status === 'PREPARING' || order.status === 'SERVED';
+        const finalVerification = isVerifiedStatus ? 'VERIFIED_ACCEPTED' : (override.verificationStatus || verify.verificationStatus);
         return {
           ...order,
           ...verify,
-          ...override
+          ...override,
+          verificationStatus: finalVerification
         };
       });
     }
@@ -399,8 +405,19 @@ export const restaurantApi = {
     const verOverrides = JSON.parse(localStorage.getItem('mcj_order_verifications') || '{}');
     if (verificationStatus) {
       verOverrides[id] = { ...(verOverrides[id] || {}), verificationStatus };
+      verOverrides[String(id)] = { ...(verOverrides[String(id)] || {}), verificationStatus };
       localStorage.setItem('mcj_order_verifications', JSON.stringify(verOverrides));
     }
+
+    try {
+      const savedOrders = JSON.parse(localStorage.getItem('mcj_orders') || '[]');
+      const target = savedOrders.find(o => String(o.id) === String(id));
+      if (target) {
+        target.status = newStatus;
+        if (verificationStatus) target.verificationStatus = verificationStatus;
+        localStorage.setItem('mcj_orders', JSON.stringify(savedOrders));
+      }
+    } catch (e) {}
 
     try {
       const res = await fetch(getApiUrl(`/orders/${id}/status`), {
@@ -411,22 +428,16 @@ export const restaurantApi = {
       if (res.ok) {
         const saved = await res.json();
         const verify = parseVerificationFromOrder(saved);
-        return { ...saved, ...verify, ...(verOverrides[id] || {}) };
+        if (newStatus === 'VERIFIED' || newStatus === 'PREPARING' || newStatus === 'SERVED') {
+          verify.verificationStatus = 'VERIFIED_ACCEPTED';
+        }
+        return { ...saved, ...verify, ...(verOverrides[id] || {}), ...(verOverrides[String(id)] || {}) };
       }
     } catch (err) {
       console.warn('Backend offline, updating order status locally:', err.message);
     }
 
-    const savedOrders = JSON.parse(localStorage.getItem('mcj_orders') || '[]');
-    const target = savedOrders.find(o => o.id === id);
-    if (target) {
-      target.status = newStatus;
-      if (verificationStatus) target.verificationStatus = verificationStatus;
-      localStorage.setItem('mcj_orders', JSON.stringify(savedOrders));
-      const verify = parseVerificationFromOrder(target);
-      return { ...target, ...verify, ...(verOverrides[id] || {}) };
-    }
-    return { id, status: newStatus, ...(verOverrides[id] || {}) };
+    return { id, status: newStatus, ...(verOverrides[id] || {}), ...(verOverrides[String(id)] || {}) };
   },
 
   // Delete Single Order (Admin)

@@ -206,7 +206,7 @@ export default function AdminDashboard({ onNavigateToMenu }) {
 
       const isCancelled = order.status === 'CANCELLED' || order.verificationStatus === 'REJECTED_FAKE';
       const isCompleted = order.status === 'COMPLETED' || order.status === 'SERVED';
-      const isActive = order.status === 'PENDING' || order.status === 'PREPARING';
+      const isActive = !isCancelled && !isCompleted;
       const orderTotal = Number(order.total) || 0;
 
       if (isCancelled) {
@@ -420,23 +420,42 @@ export default function AdminDashboard({ onNavigateToMenu }) {
   }, []);
 
   const handleUpdateStatus = async (orderId, nextStatus) => {
+    // Instant optimistic state update
+    setOrders(prev => prev.map(o => {
+      if (String(o.id) === String(orderId)) {
+        return { ...o, status: nextStatus };
+      }
+      return o;
+    }));
+
     try {
       await restaurantApi.updateOrderStatus(orderId, nextStatus);
-      refreshData();
     } catch (err) {
-      alert('Failed to update order: ' + err.message);
+      console.warn('Backend update failed:', err.message);
     }
   };
 
-  const handleVerifyOrder = async (orderId, verificationStatus, nextStatus = 'PENDING') => {
+  const handleVerifyOrder = async (orderId, verificationStatus = 'VERIFIED_ACCEPTED', nextStatus = 'VERIFIED') => {
+    // Instant optimistic state update (button responds in 0ms)
+    setOrders(prev => prev.map(o => {
+      if (String(o.id) === String(orderId)) {
+        return {
+          ...o,
+          status: nextStatus,
+          verificationStatus: verificationStatus
+        };
+      }
+      return o;
+    }));
+
+    if (latestNewOrder && String(latestNewOrder.id) === String(orderId)) {
+      setLatestNewOrder(null);
+    }
+
     try {
       await restaurantApi.updateOrderStatus(orderId, nextStatus, verificationStatus);
-      if (latestNewOrder && latestNewOrder.id === orderId) {
-        setLatestNewOrder(null);
-      }
-      refreshData();
     } catch (err) {
-      alert('Failed to update order: ' + err.message);
+      console.warn('Backend update failed:', err.message);
     }
   };
 
@@ -446,14 +465,26 @@ export default function AdminDashboard({ onNavigateToMenu }) {
     );
     if (!isConfirmed) return;
 
+    // Instant optimistic state update
+    setOrders(prev => prev.map(o => {
+      if (String(o.id) === String(orderId)) {
+        return {
+          ...o,
+          status: 'CANCELLED',
+          verificationStatus: 'REJECTED_FAKE'
+        };
+      }
+      return o;
+    }));
+
+    if (latestNewOrder && String(latestNewOrder.id) === String(orderId)) {
+      setLatestNewOrder(null);
+    }
+
     try {
       await restaurantApi.updateOrderStatus(orderId, 'CANCELLED', 'REJECTED_FAKE');
-      if (latestNewOrder && latestNewOrder.id === orderId) {
-        setLatestNewOrder(null);
-      }
-      refreshData();
     } catch (err) {
-      alert('Failed to reject order: ' + err.message);
+      console.warn('Failed to reject order:', err.message);
     }
   };
 
@@ -810,7 +841,7 @@ export default function AdminDashboard({ onNavigateToMenu }) {
                 setActiveTab('orders');
                 setOrderStatusFilter('PENDING');
                 if (latestNewOrder.id) {
-                  handleVerifyOrder(latestNewOrder.id, 'VERIFIED_ACCEPTED', 'PENDING');
+                  handleVerifyOrder(latestNewOrder.id, 'VERIFIED_ACCEPTED', 'VERIFIED');
                 }
                 setLatestNewOrder(null);
               }}
@@ -1105,7 +1136,11 @@ export default function AdminDashboard({ onNavigateToMenu }) {
                   const isCompleted = order.status === 'COMPLETED';
                   const isCancelled = order.status === 'CANCELLED' || order.verificationStatus === 'REJECTED_FAKE';
                   const isPending = !isCompleted && !isCancelled;
-                  const isSeatVerified = order.verificationStatus === 'VERIFIED_ACCEPTED';
+                  const isSeatVerified = 
+                    order.status === 'VERIFIED' || 
+                    order.status === 'PREPARING' || 
+                    order.status === 'SERVED' || 
+                    order.verificationStatus === 'VERIFIED_ACCEPTED';
 
                   return (
                     <div
@@ -1202,7 +1237,7 @@ export default function AdminDashboard({ onNavigateToMenu }) {
                               <span className={`text-[10px] font-black px-2 py-0.5 rounded-full border ${
                                 order.verificationStatus === 'REJECTED_FAKE'
                                   ? 'bg-red-600 text-white border-red-400'
-                                  : order.verificationStatus === 'VERIFIED_ACCEPTED'
+                                  : isSeatVerified
                                   ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
                                   : order.locationStatus === 'VERIFIED_AT_RESTAURANT'
                                   ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40'
@@ -1212,7 +1247,7 @@ export default function AdminDashboard({ onNavigateToMenu }) {
                               }`}>
                                 {order.verificationStatus === 'REJECTED_FAKE'
                                   ? '❌ FAKE / REJECTED'
-                                  : order.verificationStatus === 'VERIFIED_ACCEPTED'
+                                  : isSeatVerified
                                   ? '✓ TABLE VERIFIED'
                                   : order.locationStatus === 'VERIFIED_AT_RESTAURANT'
                                   ? '📍 At Restaurant'
@@ -1226,7 +1261,7 @@ export default function AdminDashboard({ onNavigateToMenu }) {
                             <p className="text-[11px] leading-tight text-stone-300">
                               {order.verificationStatus === 'REJECTED_FAKE'
                                 ? '❌ Order rejected: Customer table par nahi tha ya ghr se order kiya gaya.'
-                                : order.verificationStatus === 'VERIFIED_ACCEPTED'
+                                : isSeatVerified
                                 ? '✓ Staff confirmed: Customer Table par physically baithe hain.'
                                 : order.locationStatus === 'SUSPECTED_REMOTE'
                                 ? `⚠️ WARNING: Customer ${order.distanceDisplay || 'door'} se order kar raha hai! Ghr se order ki sambhavna hai. Table ${order.tableNumber} par physically check karein.`
@@ -1260,7 +1295,7 @@ export default function AdminDashboard({ onNavigateToMenu }) {
 
                             {/* Verification State Banner */}
                             <div className="pt-2 flex items-center justify-between text-[11px] border-t border-stone-800/80">
-                              {order.verificationStatus === 'VERIFIED_ACCEPTED' ? (
+                              {isSeatVerified ? (
                                 <span className="text-emerald-400 font-bold flex items-center gap-1.5">
                                   <Check className="w-3.5 h-3.5" />
                                   <span>Customer Table #{order.tableNumber} Seat Par Confirmed Hai</span>
@@ -1319,7 +1354,7 @@ export default function AdminDashboard({ onNavigateToMenu }) {
                             </p>
 
                             <button
-                              onClick={() => handleVerifyOrder(order.id, 'VERIFIED_ACCEPTED', 'PENDING')}
+                              onClick={() => handleVerifyOrder(order.id, 'VERIFIED_ACCEPTED', 'VERIFIED')}
                               className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-amber-500 via-orange-500 to-amber-400 hover:from-amber-400 hover:to-orange-400 text-black font-black text-sm shadow-lg flex items-center justify-center gap-2 transition active:scale-98 border border-amber-300"
                               title="Customer seat par baitha hai to verify karein"
                             >
@@ -1769,9 +1804,9 @@ export default function AdminDashboard({ onNavigateToMenu }) {
                         {/* Fast Status Change Row */}
                         <div className="flex items-center justify-between gap-2 pt-1.5 border-t border-stone-800/60">
                           {o.status !== 'COMPLETED' && o.status !== 'CANCELLED' ? (
-                            o.verificationStatus !== 'VERIFIED_ACCEPTED' ? (
+                            !(o.status === 'VERIFIED' || o.status === 'PREPARING' || o.status === 'SERVED' || o.verificationStatus === 'VERIFIED_ACCEPTED') ? (
                               <button
-                                onClick={() => handleVerifyOrder(o.id, 'VERIFIED_ACCEPTED', 'PENDING')}
+                                onClick={() => handleVerifyOrder(o.id, 'VERIFIED_ACCEPTED', 'VERIFIED')}
                                 className="py-1.5 px-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-black text-xs transition flex items-center gap-1 shadow-md active:scale-95"
                                 title="Pehle customer seat verify karein"
                               >
