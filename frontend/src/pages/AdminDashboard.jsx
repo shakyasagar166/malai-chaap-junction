@@ -38,7 +38,11 @@ import {
   Smartphone,
   User,
   PhoneCall,
-  AlertTriangle
+  AlertTriangle,
+  Calendar,
+  BarChart3,
+  IndianRupee,
+  FileText
 } from 'lucide-react';
 import { getDishImageUrl, ADMIN_IMAGE_PRESETS } from '../utils/dishImageHelper';
 import { playOrderBellSound, testBellSound, isBellSoundEnabled, toggleBellSound } from '../utils/orderAudioHelper';
@@ -46,7 +50,7 @@ import { parseVerificationFromOrder } from '../utils/locationHelper';
 
 export default function AdminDashboard({ onNavigateToMenu }) {
   const { logout } = useAuth();
-  const [activeTab, setActiveTab] = useState('orders'); // 'orders' | 'menu' | 'qrs' | 'analytics'
+  const [activeTab, setActiveTab] = useState('orders'); // 'orders' | 'sales' | 'menu' | 'qrs' | 'analytics'
   const [orders, setOrders] = useState([]);
   const [stats, setStats] = useState({
     totalOrdersCount: 0,
@@ -112,6 +116,223 @@ export default function AdminDashboard({ onNavigateToMenu }) {
   const [latestNewOrder, setLatestNewOrder] = useState(null);
   const knownOrderIdsRef = useRef(new Set());
   const isInitialLoadRef = useRef(true);
+
+  // --- Per-Day Sales & Date Calculation Helpers ---
+  const getLocalDateString = (d = new Date()) => {
+    const dateObj = typeof d === 'string' || typeof d === 'number' ? new Date(d) : d;
+    if (isNaN(dateObj.getTime())) return new Date().toISOString().slice(0, 10);
+    const year = dateObj.getFullYear();
+    const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+    const day = String(dateObj.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const getOrderDate = (order) => {
+    if (!order) return getLocalDateString();
+    if (order.createdAt) {
+      try {
+        const d = new Date(order.createdAt);
+        if (!isNaN(d.getTime())) {
+          return getLocalDateString(d);
+        }
+      } catch (e) {}
+      const s = String(order.createdAt);
+      if (s.length >= 10 && s.includes('-')) {
+        return s.slice(0, 10);
+      }
+    }
+    if (order.orderNumber) {
+      const m = order.orderNumber.match(/MCJ-(\d{2})(\d{2})(\d{2})-/);
+      if (m) {
+        return `20${m[1]}-${m[2]}-${m[3]}`;
+      }
+    }
+    return getLocalDateString();
+  };
+
+  const formatIndianDate = (dateStr) => {
+    if (!dateStr) return '';
+    try {
+      const [y, m, d] = dateStr.split('-');
+      if (y && m && d) {
+        const dateObj = new Date(Number(y), Number(m) - 1, Number(d));
+        const todayStr = getLocalDateString();
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        const yestStr = getLocalDateString(yesterday);
+
+        let suffix = '';
+        if (dateStr === todayStr) suffix = ' (Aaj / Today)';
+        else if (dateStr === yestStr) suffix = ' (Kal / Yesterday)';
+
+        return dateObj.toLocaleDateString('en-IN', {
+          day: '2-digit',
+          month: 'short',
+          year: 'numeric'
+        }) + suffix;
+      }
+    } catch (e) {}
+    return dateStr;
+  };
+
+  const todayDateStr = getLocalDateString();
+  const [selectedSalesDate, setSelectedSalesDate] = useState(todayDateStr);
+
+  // Group orders by Date (Per-Day Analytics)
+  const salesByDate = React.useMemo(() => {
+    const map = {};
+
+    orders.forEach(order => {
+      const dStr = getOrderDate(order);
+      if (!map[dStr]) {
+        map[dStr] = {
+          date: dStr,
+          orders: [],
+          totalOrders: 0,
+          completedOrders: 0,
+          activeOrders: 0,
+          cancelledOrders: 0,
+          dineInOrders: 0,
+          takeawayOrders: 0,
+          totalRevenue: 0, // gross non-cancelled revenue
+          completedRevenue: 0,
+          itemsMap: {}
+        };
+      }
+
+      const entry = map[dStr];
+      entry.orders.push(order);
+      entry.totalOrders += 1;
+
+      const isCancelled = order.status === 'CANCELLED' || order.verificationStatus === 'REJECTED_FAKE';
+      const isCompleted = order.status === 'COMPLETED' || order.status === 'SERVED';
+      const isActive = order.status === 'PENDING' || order.status === 'PREPARING';
+      const orderTotal = Number(order.total) || 0;
+
+      if (isCancelled) {
+        entry.cancelledOrders += 1;
+      } else {
+        entry.totalRevenue += orderTotal;
+        if (isCompleted) {
+          entry.completedOrders += 1;
+          entry.completedRevenue += orderTotal;
+        }
+        if (isActive) {
+          entry.activeOrders += 1;
+        }
+        if (order.orderType === 'DINE_IN') {
+          entry.dineInOrders += 1;
+        } else {
+          entry.takeawayOrders += 1;
+        }
+
+        // Aggregate items sold
+        if (Array.isArray(order.items)) {
+          order.items.forEach(it => {
+            const key = `${it.itemName || 'Item'}_${it.portion || 'STANDARD'}`;
+            if (!entry.itemsMap[key]) {
+              entry.itemsMap[key] = {
+                name: it.itemName || 'Dish',
+                portion: it.portion || '',
+                quantity: 0,
+                totalAmount: 0
+              };
+            }
+            const qty = Number(it.quantity) || 1;
+            const unitPrice = Number(it.pricePerUnit) || 0;
+            entry.itemsMap[key].quantity += qty;
+            entry.itemsMap[key].totalAmount += (unitPrice * qty);
+          });
+        }
+      }
+    });
+
+    const sortedDates = Object.keys(map).sort((a, b) => b.localeCompare(a));
+    return sortedDates.map(dStr => {
+      const item = map[dStr];
+      const topItems = Object.values(item.itemsMap).sort((a, b) => b.quantity - a.quantity);
+      return {
+        ...item,
+        topItems
+      };
+    });
+  }, [orders]);
+
+  // Today's summary
+  const todaySalesStats = React.useMemo(() => {
+    const todayEntry = salesByDate.find(s => s.date === todayDateStr);
+    if (!todayEntry) {
+      return {
+        date: todayDateStr,
+        totalOrders: 0,
+        completedOrders: 0,
+        activeOrders: 0,
+        cancelledOrders: 0,
+        dineInOrders: 0,
+        takeawayOrders: 0,
+        totalRevenue: 0,
+        completedRevenue: 0,
+        topItems: [],
+        orders: []
+      };
+    }
+    return todayEntry;
+  }, [salesByDate, todayDateStr]);
+
+  // Selected date's summary
+  const selectedDateStats = React.useMemo(() => {
+    const entry = salesByDate.find(s => s.date === selectedSalesDate);
+    if (!entry) {
+      return {
+        date: selectedSalesDate,
+        totalOrders: 0,
+        completedOrders: 0,
+        activeOrders: 0,
+        cancelledOrders: 0,
+        dineInOrders: 0,
+        takeawayOrders: 0,
+        totalRevenue: 0,
+        completedRevenue: 0,
+        topItems: [],
+        orders: []
+      };
+    }
+    return entry;
+  }, [salesByDate, selectedSalesDate]);
+
+  // Lifetime Grand Totals
+  const lifetimeTotals = React.useMemo(() => {
+    let grandRevenue = 0;
+    let grandCompletedRevenue = 0;
+    let grandTotalOrders = 0;
+    let grandCompletedOrders = 0;
+    let grandActiveOrders = 0;
+    let grandCancelledOrders = 0;
+    let grandDineIn = 0;
+    let grandTakeaway = 0;
+
+    salesByDate.forEach(s => {
+      grandRevenue += s.totalRevenue;
+      grandCompletedRevenue += s.completedRevenue;
+      grandTotalOrders += s.totalOrders;
+      grandCompletedOrders += s.completedOrders;
+      grandActiveOrders += s.activeOrders;
+      grandCancelledOrders += s.cancelledOrders;
+      grandDineIn += s.dineInOrders;
+      grandTakeaway += s.takeawayOrders;
+    });
+
+    return {
+      grandRevenue,
+      grandCompletedRevenue,
+      grandTotalOrders,
+      grandCompletedOrders,
+      grandActiveOrders,
+      grandCancelledOrders,
+      grandDineIn,
+      grandTakeaway
+    };
+  }, [salesByDate]);
 
   // Load orders, menu & stats
   const refreshData = async () => {
@@ -704,6 +925,19 @@ export default function AdminDashboard({ onNavigateToMenu }) {
         {/* Stats Row */}
         <div className="border-t border-stone-800/80 bg-stone-900/60">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 py-2.5 grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
+            <div 
+              onClick={() => { setSelectedSalesDate(todayDateStr); setActiveTab('sales'); }}
+              className="cursor-pointer group hover:bg-stone-800/50 p-1.5 -m-1.5 rounded-xl transition"
+              title="Click karke Aaj Ki Sale ka pura hisab dekhein"
+            >
+              <span className="text-stone-500 font-medium group-hover:text-amber-400 transition">Aaj Ki Sale (Today):</span>
+              <span className="ml-1.5 font-black text-emerald-400 text-sm group-hover:underline">
+                ₹{todaySalesStats.totalRevenue.toFixed(0)}
+              </span>
+              <span className="text-[10px] text-stone-400 block font-normal mt-0.5">
+                {todaySalesStats.totalOrders} Orders ({todaySalesStats.completedOrders} Delivered)
+              </span>
+            </div>
             <div>
               <span className="text-stone-500 font-medium">Active Kitchen Orders:</span>
               <span className="ml-1.5 font-bold text-amber-400 text-sm">
@@ -715,14 +949,10 @@ export default function AdminDashboard({ onNavigateToMenu }) {
               <span className="ml-1.5 font-bold text-stone-200 text-sm">{orders.length}</span>
             </div>
             <div>
-              <span className="text-stone-500 font-medium">Total Sales:</span>
+              <span className="text-stone-500 font-medium">Total Lifetime Sale:</span>
               <span className="ml-1.5 font-bold text-emerald-400 text-sm">
-                ₹{orders.reduce((sum, o) => sum + (o.total || 0), 0).toFixed(0)}
+                ₹{lifetimeTotals.grandRevenue.toFixed(0)}
               </span>
-            </div>
-            <div>
-              <span className="text-stone-500 font-medium">Total Menu Dishes:</span>
-              <span className="ml-1.5 font-bold text-orange-400 text-sm">{menuItems.length} Dishes</span>
             </div>
           </div>
         </div>
@@ -730,10 +960,11 @@ export default function AdminDashboard({ onNavigateToMenu }) {
         {/* Navigation Tabs */}
         <div className="border-t border-stone-800 px-4 sm:px-6 flex gap-2 overflow-x-auto no-scrollbar">
           {[
-            { id: 'orders', label: '🔥 Kitchen Display (KDS)', count: orders.filter(o => o.status === 'PENDING' || o.status === 'PREPARING').length },
+            { id: 'orders', label: '🔥 Kitchen Display & Orders', count: orders.filter(o => o.status === 'PENDING' || o.status === 'PREPARING').length },
+            { id: 'sales', label: `💰 Aaj Ki Sale & Daily Reports (₹${todaySalesStats.totalRevenue.toFixed(0)})`, count: null },
             { id: 'menu', label: `📋 Menu & Stock (${menuItems.length})`, count: null },
             { id: 'qrs', label: '📱 Table QR Standees (1-20)', count: null },
-            { id: 'analytics', label: '📊 Store Info & Sales', count: null }
+            { id: 'analytics', label: 'ℹ️ Store Info', count: null }
           ].map(tab => (
             <button
               key={tab.id}
@@ -765,22 +996,70 @@ export default function AdminDashboard({ onNavigateToMenu }) {
           </div>
         )}
         
-        {/* TAB 1: KITCHEN DISPLAY SYSTEM */}
+        {/* TAB 1: KITCHEN DISPLAY SYSTEM & ORDERS */}
         {activeTab === 'orders' && (
           <div className="space-y-6">
+            {/* AAJ KI TOTAL SALE QUICK BANNER */}
+            <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-emerald-950/70 via-stone-900 to-amber-950/60 border border-emerald-500/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xl">
+              <div className="flex items-center gap-3.5">
+                <div className="w-11 h-11 rounded-2xl bg-emerald-600/25 border border-emerald-500/50 flex items-center justify-center text-emerald-400 flex-shrink-0 shadow-glow">
+                  <TrendingUp className="w-6 h-6" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] font-black uppercase tracking-wider text-emerald-400 font-display">
+                      💰 AAJ KI TOTAL SALE ({formatIndianDate(todayDateStr)})
+                    </span>
+                    <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-2 py-0.2 rounded-full font-bold">
+                      LIVE COUNTER
+                    </span>
+                  </div>
+                  <div className="flex items-baseline gap-3 mt-1">
+                    <span className="text-2xl sm:text-3xl font-black text-white font-display">
+                      ₹{todaySalesStats.totalRevenue.toFixed(0)}
+                    </span>
+                    <span className="text-xs text-stone-300">
+                      &bull; {todaySalesStats.totalOrders} Orders ({todaySalesStats.completedOrders} Delivered &bull; {todaySalesStats.activeOrders} In-Kitchen)
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    setSelectedSalesDate(todayDateStr);
+                    setActiveTab('sales');
+                  }}
+                  className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black shadow-md transition flex items-center gap-1.5 active:scale-95"
+                >
+                  <BarChart3 className="w-3.5 h-3.5" />
+                  <span>Aaj Ka Pura Hisab / Report 📊</span>
+                </button>
+              </div>
+            </div>
+
             <div className="flex items-center justify-between gap-3 flex-wrap">
               <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
-                {['ALL', 'PENDING', 'PREPARING', 'SERVED', 'COMPLETED'].map(status => (
+                <span className="text-xs font-semibold text-stone-400 whitespace-nowrap">Filter:</span>
+                {[
+                  { id: 'ALL', label: `Sabhi (${orders.length})` },
+                  { id: 'PENDING', label: `⏳ Pending (${orders.filter(o => o.status === 'PENDING').length})` },
+                  { id: 'PREPARING', label: `🔥 Preparing (${orders.filter(o => o.status === 'PREPARING').length})` },
+                  { id: 'SERVED', label: `🍽️ Served (${orders.filter(o => o.status === 'SERVED').length})` },
+                  { id: 'COMPLETED', label: `✅ Completed (${orders.filter(o => o.status === 'COMPLETED').length})` },
+                  { id: 'CANCELLED', label: `❌ Cancelled (${orders.filter(o => o.status === 'CANCELLED').length})` },
+                ].map(f => (
                   <button
-                    key={status}
-                    onClick={() => setOrderStatusFilter(status)}
+                    key={f.id}
+                    onClick={() => setOrderStatusFilter(f.id)}
                     className={`px-3 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap ${
-                      orderStatusFilter === status
-                        ? 'bg-amber-500 text-black'
+                      orderStatusFilter === f.id
+                        ? 'bg-amber-500 text-black shadow-sm'
                         : 'bg-stone-900 text-stone-400 hover:text-stone-200 border border-stone-800'
                     }`}
                   >
-                    {status}
+                    {f.label}
                   </button>
                 ))}
               </div>
@@ -1006,48 +1285,109 @@ export default function AdminDashboard({ onNavigateToMenu }) {
                         </div>
                       </div>
 
-                      {/* Action Buttons */}
-                      <div className="mt-4 pt-3 border-t border-stone-800/80 flex gap-2">
-                        {isPending && (
+                      {/* In-Card Status Control Bar */}
+                      <div className="mt-4 pt-3.5 border-t border-stone-800/80 space-y-2.5">
+                        <div className="flex items-center justify-between text-[11px] font-bold text-stone-400">
+                          <span className="flex items-center gap-1.5 text-stone-300">
+                            <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+                            Order Status Change Karein:
+                          </span>
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase border ${
+                            order.status === 'PENDING'
+                              ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                              : order.status === 'PREPARING'
+                              ? 'bg-orange-500/20 text-orange-300 border-orange-500/40'
+                              : order.status === 'SERVED'
+                              ? 'bg-blue-500/20 text-blue-300 border-blue-500/40'
+                              : order.status === 'COMPLETED'
+                              ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40'
+                              : 'bg-red-500/20 text-red-400 border-red-500/40'
+                          }`}>
+                            {order.status}
+                          </span>
+                        </div>
+
+                        {/* Status Action Buttons Grid inside this card */}
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
                           <button
-                            onClick={() => handleVerifyOrder(order.id, 'VERIFIED_ACCEPTED', 'PREPARING')}
-                            className="flex-1 py-2 px-3 rounded-xl bg-orange-600 hover:bg-orange-500 text-white font-bold text-xs shadow-glow-tandoor transition flex items-center justify-center gap-1"
+                            onClick={() => handleUpdateStatus(order.id, 'PENDING')}
+                            className={`py-2 px-2 rounded-xl text-xs font-black transition flex items-center justify-center gap-1.5 ${
+                              order.status === 'PENDING'
+                                ? 'bg-gradient-to-r from-amber-500 to-yellow-500 text-black shadow-lg ring-2 ring-amber-300 scale-[1.02]'
+                                : 'bg-stone-800/90 text-stone-300 hover:bg-stone-700 hover:text-white border border-stone-700/60'
+                            }`}
+                            title="Status ko Pending set karein"
                           >
-                            <span>Mark Preparing 🔥</span>
+                            <Clock className="w-3.5 h-3.5" />
+                            <span>Pending</span>
                           </button>
-                        )}
-                        {isPreparing && (
+
+                          <button
+                            onClick={() => handleUpdateStatus(order.id, 'PREPARING')}
+                            className={`py-2 px-2 rounded-xl text-xs font-black transition flex items-center justify-center gap-1.5 ${
+                              order.status === 'PREPARING'
+                                ? 'bg-gradient-to-r from-orange-600 to-amber-600 text-white shadow-glow-tandoor ring-2 ring-orange-400 scale-[1.02]'
+                                : 'bg-stone-800/90 text-stone-300 hover:bg-orange-950/40 hover:text-orange-300 border border-stone-700/60'
+                            }`}
+                            title="Kitchen me Preparing mark karein"
+                          >
+                            <Flame className="w-3.5 h-3.5" />
+                            <span>Preparing</span>
+                          </button>
+
                           <button
                             onClick={() => handleUpdateStatus(order.id, 'SERVED')}
-                            className="flex-1 py-2 px-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs transition"
+                            className={`py-2 px-2 rounded-xl text-xs font-black transition flex items-center justify-center gap-1.5 ${
+                              order.status === 'SERVED'
+                                ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-lg ring-2 ring-blue-300 scale-[1.02]'
+                                : 'bg-stone-800/90 text-stone-300 hover:bg-blue-950/40 hover:text-blue-300 border border-stone-700/60'
+                            }`}
+                            title="Table par Served mark karein"
                           >
-                            Mark Served 🍽️
+                            <Utensils className="w-3.5 h-3.5" />
+                            <span>Served</span>
                           </button>
-                        )}
-                        {isServed && (
+
                           <button
                             onClick={() => handleUpdateStatus(order.id, 'COMPLETED')}
-                            className="flex-1 py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition"
+                            className={`py-2 px-2 rounded-xl text-xs font-black transition flex items-center justify-center gap-1.5 ${
+                              order.status === 'COMPLETED'
+                                ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-lg ring-2 ring-emerald-300 scale-[1.02]'
+                                : 'bg-stone-800/90 text-stone-300 hover:bg-emerald-950/40 hover:text-emerald-300 border border-stone-700/60'
+                            }`}
+                            title="Order Complete mark karein"
                           >
-                            Complete Order ✅
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            <span>Complete</span>
                           </button>
-                        )}
-                        {!isCompleted && order.status !== 'CANCELLED' && (
+                        </div>
+
+                        {/* Card Bottom Row: Reject & Delete */}
+                        <div className="flex items-center justify-between gap-2 pt-1.5 text-xs">
+                          {order.status !== 'CANCELLED' ? (
+                            <button
+                              onClick={() => handleRejectFakeOrder(order.id, order.tableNumber)}
+                              className="py-1.5 px-3 rounded-xl bg-red-950/40 hover:bg-red-900/80 text-red-300 border border-red-800/50 text-[11px] font-bold transition flex items-center gap-1"
+                              title="Order Reject / Cancel Karein"
+                            >
+                              <X className="w-3 h-3" />
+                              <span>Reject / Cancel</span>
+                            </button>
+                          ) : (
+                            <span className="text-[11px] font-bold text-red-400 flex items-center gap-1 bg-red-950/40 px-2.5 py-1 rounded-xl border border-red-800/40">
+                              <X className="w-3 h-3" /> Cancelled Order
+                            </span>
+                          )}
+
                           <button
-                            onClick={() => handleRejectFakeOrder(order.id, order.tableNumber)}
-                            className="py-2 px-3 rounded-xl bg-stone-800 hover:bg-red-950/60 text-stone-400 hover:text-red-400 text-xs transition"
-                            title="Cancel / Reject Order"
+                            onClick={() => handleDeleteOrder(order.id, order.orderNumber)}
+                            className="py-1.5 px-3 rounded-xl bg-stone-800/80 hover:bg-red-950/80 text-stone-400 hover:text-red-400 border border-stone-700/60 text-[11px] font-bold transition flex items-center gap-1 ml-auto"
+                            title="Order permanently remove karein"
                           >
-                            Reject
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span>Delete</span>
                           </button>
-                        )}
-                        <button
-                          onClick={() => handleDeleteOrder(order.id, order.orderNumber)}
-                          className="py-2 px-2.5 rounded-xl bg-stone-800/80 hover:bg-red-950/80 text-stone-400 hover:text-red-400 border border-stone-700/60 text-xs transition flex items-center justify-center"
-                          title="Order Delete / Remove Karein"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                        </div>
                       </div>
                     </div>
                   );
@@ -1057,7 +1397,525 @@ export default function AdminDashboard({ onNavigateToMenu }) {
           </div>
         )}
 
-        {/* TAB 2: MENU & STOCK MANAGEMENT */}
+        {/* TAB 2: AAJ KI SALE & PER-DAY SALES REPORTS */}
+        {activeTab === 'sales' && (
+          <div className="space-y-6">
+            
+            {/* Sales Section Header */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-stone-900/60 p-5 rounded-2xl border border-stone-800 shadow-xl">
+              <div>
+                <div className="flex items-center gap-2.5">
+                  <div className="w-10 h-10 rounded-2xl bg-emerald-600/25 border border-emerald-500/50 flex items-center justify-center text-emerald-400 flex-shrink-0 shadow-glow">
+                    <BarChart3 className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h2 className="text-base sm:text-lg font-black uppercase text-white font-display tracking-wide">
+                        Daily Sales &amp; Business Reports
+                      </h2>
+                      <span className="text-[10px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full font-bold">
+                        HISAB-KITAB
+                      </span>
+                    </div>
+                    <p className="text-xs text-stone-400 mt-0.5">
+                      Svad Malai Chaap Junction &bull; Sanjay Nagar, Sector - 23, Ghaziabad
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Date Filter & Print Controls */}
+              <div className="flex items-center gap-2 flex-wrap">
+                {/* Date Picker Input */}
+                <div className="flex items-center gap-2 bg-stone-950 border border-stone-800 rounded-xl px-3 py-1.5 text-xs">
+                  <Calendar className="w-4 h-4 text-amber-400 flex-shrink-0" />
+                  <span className="text-stone-400 text-[11px] font-semibold">Tarikh:</span>
+                  <input
+                    type="date"
+                    value={selectedSalesDate}
+                    onChange={(e) => setSelectedSalesDate(e.target.value)}
+                    className="bg-transparent text-white font-bold text-xs focus:outline-none cursor-pointer"
+                  />
+                </div>
+
+                {/* Quick Date Pills */}
+                <button
+                  onClick={() => setSelectedSalesDate(todayDateStr)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition ${
+                    selectedSalesDate === todayDateStr
+                      ? 'bg-emerald-600 text-white shadow-md ring-2 ring-emerald-400'
+                      : 'bg-stone-800 text-stone-300 hover:bg-stone-700'
+                  }`}
+                >
+                  Aaj (Today)
+                </button>
+
+                <button
+                  onClick={() => {
+                    const yest = new Date();
+                    yest.setDate(yest.getDate() - 1);
+                    setSelectedSalesDate(getLocalDateString(yest));
+                  }}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition ${
+                    selectedSalesDate === getLocalDateString(new Date(Date.now() - 86400000))
+                      ? 'bg-amber-600 text-white shadow-md ring-2 ring-amber-400'
+                      : 'bg-stone-800 text-stone-300 hover:bg-stone-700'
+                  }`}
+                >
+                  Kal (Yesterday)
+                </button>
+
+                {/* Print Report */}
+                <button
+                  onClick={() => window.print()}
+                  className="px-3.5 py-1.5 rounded-xl bg-orange-600 hover:bg-orange-500 text-white text-xs font-black flex items-center gap-1.5 shadow-md transition active:scale-95"
+                  title="Is din ka report print karein"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  <span>Print Report 🖨️</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Selected Date Summary Headline */}
+            <div className="flex items-center justify-between text-xs text-stone-400 px-1">
+              <span className="font-bold text-stone-300">
+                📅 Showing Reports for:{' '}
+                <strong className="text-amber-400 font-display text-sm uppercase ml-1">
+                  {formatIndianDate(selectedSalesDate)}
+                </strong>
+              </span>
+              <span className="text-[11px] text-stone-500">
+                (Click any date below in the history table to inspect)
+              </span>
+            </div>
+
+            {/* KPI Summary Cards Grid for Selected Date */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              
+              {/* Card 1: Total Revenue for Selected Date */}
+              <div className="p-5 rounded-2xl bg-gradient-to-br from-emerald-950/50 via-stone-900 to-stone-950 border border-emerald-500/40 shadow-xl relative overflow-hidden">
+                <div className="flex items-center justify-between text-xs text-stone-400 mb-1">
+                  <span className="font-black uppercase tracking-wider text-emerald-400 text-[11px]">
+                    {selectedSalesDate === todayDateStr ? 'Aaj Ki Total Sale' : 'Is Din Ki Total Sale'}
+                  </span>
+                  <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-full font-bold">
+                    REVENUE
+                  </span>
+                </div>
+                <div className="text-3xl font-black text-white font-display mt-2 flex items-baseline gap-1">
+                  <span className="text-emerald-400 text-2xl font-sans">₹</span>
+                  <span>{selectedDateStats.totalRevenue.toFixed(0)}</span>
+                </div>
+                <div className="mt-3 pt-2 border-t border-stone-800 text-[11px] flex justify-between items-center text-stone-400">
+                  <span>Delivered / Completed:</span>
+                  <strong className="text-emerald-400 font-bold">₹{selectedDateStats.completedRevenue.toFixed(0)}</strong>
+                </div>
+              </div>
+
+              {/* Card 2: Total Orders on this Day */}
+              <div className="p-5 rounded-2xl bg-gradient-to-br from-amber-950/50 via-stone-900 to-stone-950 border border-amber-500/40 shadow-xl">
+                <div className="flex items-center justify-between text-xs text-stone-400 mb-1">
+                  <span className="font-black uppercase tracking-wider text-amber-400 text-[11px]">
+                    Total Orders Placed
+                  </span>
+                  <Utensils className="w-4 h-4 text-amber-400" />
+                </div>
+                <div className="text-3xl font-black text-white font-display mt-2 flex items-baseline gap-1.5">
+                  <span>{selectedDateStats.totalOrders}</span>
+                  <span className="text-sm font-normal text-stone-400">Orders</span>
+                </div>
+                <div className="mt-3 pt-2 border-t border-stone-800 text-[11px] text-stone-400 flex items-center justify-between">
+                  <span>{selectedDateStats.completedOrders} Served</span>
+                  <span>&bull;</span>
+                  <span className="text-amber-300">{selectedDateStats.activeOrders} Active</span>
+                  <span>&bull;</span>
+                  <span className="text-red-400">{selectedDateStats.cancelledOrders} Cancelled</span>
+                </div>
+              </div>
+
+              {/* Card 3: Dine-In vs Takeaway */}
+              <div className="p-5 rounded-2xl bg-gradient-to-br from-blue-950/50 via-stone-900 to-stone-950 border border-blue-500/40 shadow-xl">
+                <div className="flex items-center justify-between text-xs text-stone-400 mb-1">
+                  <span className="font-black uppercase tracking-wider text-blue-400 text-[11px]">
+                    Dine-In vs Takeaway
+                  </span>
+                  <ShoppingBag className="w-4 h-4 text-blue-400" />
+                </div>
+                <div className="text-2xl font-black text-white font-display mt-2 flex items-center gap-4">
+                  <div>
+                    <span className="text-[10px] text-stone-400 block font-normal uppercase">Table Dine-In</span>
+                    <span className="text-xl text-blue-300 font-bold">{selectedDateStats.dineInOrders}</span>
+                  </div>
+                  <div className="w-px h-8 bg-stone-800"></div>
+                  <div>
+                    <span className="text-[10px] text-stone-400 block font-normal uppercase">Takeaway Parcel</span>
+                    <span className="text-xl text-amber-300 font-bold">{selectedDateStats.takeawayOrders}</span>
+                  </div>
+                </div>
+                <div className="mt-3 pt-2 border-t border-stone-800 text-[11px] text-stone-400">
+                  Total customers served on this day
+                </div>
+              </div>
+
+              {/* Card 4: Average Order Value (AOV) */}
+              <div className="p-5 rounded-2xl bg-gradient-to-br from-orange-950/50 via-stone-900 to-stone-950 border border-orange-500/40 shadow-xl">
+                <div className="flex items-center justify-between text-xs text-stone-400 mb-1">
+                  <span className="font-black uppercase tracking-wider text-orange-400 text-[11px]">
+                    Avg Order Value (AOV)
+                  </span>
+                  <TrendingUp className="w-4 h-4 text-orange-400" />
+                </div>
+                <div className="text-3xl font-black text-white font-display mt-2 flex items-baseline gap-1">
+                  <span className="text-orange-400 text-2xl font-sans">₹</span>
+                  <span>
+                    {selectedDateStats.totalOrders > 0
+                      ? (selectedDateStats.totalRevenue / selectedDateStats.totalOrders).toFixed(0)
+                      : 0}
+                  </span>
+                  <span className="text-xs font-normal text-stone-400 ml-1">/ order</span>
+                </div>
+                <div className="mt-3 pt-2 border-t border-stone-800 text-[11px] text-stone-400">
+                  Per customer average counter spend
+                </div>
+              </div>
+
+            </div>
+
+            {/* Two-Column Grid: Top Dishes Sold & Orders List for Selected Date */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+              
+              {/* LEFT COLUMN: Top Selling Dishes on Selected Date */}
+              <div className="bg-stone-900/60 p-5 rounded-2xl border border-stone-800 shadow-xl space-y-4">
+                <div className="flex items-center justify-between border-b border-stone-800 pb-3">
+                  <div className="flex items-center gap-2">
+                    <Flame className="w-4 h-4 text-orange-500" />
+                    <h3 className="text-sm font-black uppercase text-white font-display">
+                      {selectedSalesDate === todayDateStr ? 'Aaj Sabse Zyada Bikne Wali Dishes' : 'Is Din Bikne Wali Dishes'}
+                    </h3>
+                  </div>
+                  <span className="text-xs text-stone-400">
+                    {selectedDateStats.topItems.length} Dishes Sold
+                  </span>
+                </div>
+
+                {selectedDateStats.topItems.length === 0 ? (
+                  <div className="text-center py-12 text-stone-500 text-xs">
+                    <Utensils className="w-8 h-8 text-stone-700 mx-auto mb-2" />
+                    <span>Is din koi dish sale nahi hui ya koi order nahi tha.</span>
+                  </div>
+                ) : (
+                  <div className="space-y-2.5 max-h-[420px] overflow-y-auto no-scrollbar pr-1">
+                    {selectedDateStats.topItems.map((dish, idx) => {
+                      const maxQty = selectedDateStats.topItems[0]?.quantity || 1;
+                      const percent = Math.min(100, Math.round((dish.quantity / maxQty) * 100));
+
+                      return (
+                        <div 
+                          key={idx}
+                          className="p-3 rounded-xl bg-stone-950 border border-stone-800/80 hover:border-orange-500/40 transition space-y-1.5"
+                        >
+                          <div className="flex items-center justify-between text-xs">
+                            <div className="flex items-center gap-2">
+                              <span className={`w-5 h-5 rounded-full flex items-center justify-center font-bold text-[10px] ${
+                                idx === 0 
+                                  ? 'bg-amber-500 text-black' 
+                                  : idx === 1 
+                                  ? 'bg-stone-300 text-black' 
+                                  : idx === 2 
+                                  ? 'bg-orange-700 text-white' 
+                                  : 'bg-stone-800 text-stone-400'
+                              }`}>
+                                #{idx + 1}
+                              </span>
+                              <div>
+                                <span className="font-bold text-stone-100 font-display uppercase">
+                                  {dish.name}
+                                </span>
+                                {dish.portion && dish.portion !== 'STANDARD' && (
+                                  <span className="text-[10px] text-orange-400 font-semibold uppercase ml-1.5">
+                                    ({dish.portion})
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="text-right">
+                              <span className="font-black text-amber-400 font-mono text-sm block">
+                                ₹{dish.totalAmount.toFixed(0)}
+                              </span>
+                              <span className="text-[10px] text-stone-400">
+                                {dish.quantity} Plates / Pcs
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Progress Volume Bar */}
+                          <div className="w-full bg-stone-800 h-1.5 rounded-full overflow-hidden">
+                            <div 
+                              className="bg-gradient-to-r from-orange-500 to-amber-400 h-full rounded-full transition-all duration-500"
+                              style={{ width: `${percent}%` }}
+                            ></div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* RIGHT COLUMN: Customer Orders on Selected Date */}
+              <div className="bg-stone-900/60 p-5 rounded-2xl border border-stone-800 shadow-xl space-y-4">
+                <div className="flex items-center justify-between border-b border-stone-800 pb-3">
+                  <div className="flex items-center gap-2">
+                    <Clock className="w-4 h-4 text-amber-500" />
+                    <h3 className="text-sm font-black uppercase text-white font-display">
+                      {selectedSalesDate === todayDateStr ? 'Aaj Ke Orders' : 'Is Din Ke Orders'} ({selectedDateStats.orders.length})
+                    </h3>
+                  </div>
+                  <span className="text-xs text-stone-400">
+                    Total: ₹{selectedDateStats.totalRevenue.toFixed(0)}
+                  </span>
+                </div>
+
+                {selectedDateStats.orders.length === 0 ? (
+                  <div className="text-center py-12 text-stone-500 text-xs">
+                    <Utensils className="w-8 h-8 text-stone-700 mx-auto mb-2" />
+                    <span>Is tarikh ko koi customer order nahi aaya.</span>
+                  </div>
+                ) : (
+                  <div className="space-y-3 max-h-[420px] overflow-y-auto no-scrollbar pr-1">
+                    {selectedDateStats.orders.map(o => (
+                      <div
+                        key={o.id}
+                        className="p-3.5 rounded-xl bg-stone-950 border border-stone-800 hover:border-amber-500/40 transition space-y-2"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <span className="text-[11px] font-mono font-bold text-amber-400">
+                              {o.orderNumber}
+                            </span>
+                            <div className="text-xs font-black text-white font-display mt-0.5">
+                              {o.orderType === 'DINE_IN' ? `Table #${o.tableNumber || '-'}` : '🥡 Takeaway Parcel'}
+                              <span className="text-stone-400 font-normal ml-2">&bull; {o.customerName || 'Guest'}</span>
+                            </div>
+                          </div>
+
+                          <div className="text-right">
+                            <span className="text-sm font-black text-amber-400 font-display block">
+                              ₹{o.total?.toFixed(0)}
+                            </span>
+                            <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full border inline-block ${
+                              o.status === 'PENDING'
+                                ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                                : o.status === 'PREPARING'
+                                ? 'bg-orange-500/20 text-orange-300 border-orange-500/40'
+                                : o.status === 'SERVED'
+                                ? 'bg-blue-500/20 text-blue-300 border-blue-500/40'
+                                : o.status === 'COMPLETED'
+                                ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40'
+                                : 'bg-red-500/20 text-red-400 border-red-500/40'
+                            }`}>
+                              {o.status}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Items Preview */}
+                        <div className="text-[11px] text-stone-400 border-t border-stone-800/80 pt-1.5 line-clamp-2">
+                          {o.items?.map(it => `${it.quantity}x ${it.itemName}`).join(', ') || 'Items details'}
+                        </div>
+
+                        {/* Fast Status Change Row */}
+                        <div className="flex items-center gap-1.5 pt-1 border-t border-stone-800/60 overflow-x-auto no-scrollbar">
+                          <span className="text-[10px] text-stone-500 font-semibold mr-1">Status:</span>
+                          {['PENDING', 'PREPARING', 'SERVED', 'COMPLETED'].map(st => (
+                            <button
+                              key={st}
+                              onClick={() => handleUpdateStatus(o.id, st)}
+                              className={`py-1 px-2 rounded-lg text-[10px] font-bold transition whitespace-nowrap ${
+                                o.status === st
+                                  ? 'bg-amber-500 text-black font-black shadow-sm'
+                                  : 'bg-stone-800/80 text-stone-400 hover:text-white'
+                              }`}
+                            >
+                              {st === 'PENDING' ? 'Pending' : st === 'PREPARING' ? 'Preparing' : st === 'SERVED' ? 'Served' : 'Complete'}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+            </div>
+
+            {/* FULL PER-DAY SALES HISTORY TABLE ("PER DAY KA RECORD") */}
+            <div className="bg-stone-900/60 p-5 rounded-2xl border border-stone-800 shadow-xl space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-stone-800 pb-3">
+                <div>
+                  <h3 className="text-base font-black uppercase text-white font-display tracking-wide flex items-center gap-2">
+                    <Calendar className="w-4 h-4 text-amber-400" />
+                    <span>Tarikh-Wise Per-Day Sales Record (Daily Collection Table)</span>
+                  </h3>
+                  <p className="text-xs text-stone-400 mt-0.5">
+                    Har din kitni sale hui aur kitne orders complete hue, pura hisab neeche diya gaya hai:
+                  </p>
+                </div>
+
+                <div className="text-xs text-stone-300 font-mono font-bold bg-stone-950 px-3 py-1.5 rounded-xl border border-stone-800">
+                  Total Days Recorded: {salesByDate.length} Din
+                </div>
+              </div>
+
+              {salesByDate.length === 0 ? (
+                <div className="text-center py-10 text-stone-500 text-xs">
+                  Koi sales record nahi mila. Jab orders aayenge to din-wise table yahan update ho jayegi.
+                </div>
+              ) : (
+                <div className="overflow-x-auto rounded-xl border border-stone-800 bg-stone-950">
+                  <table className="w-full text-left text-xs text-stone-300">
+                    <thead className="bg-stone-900 text-stone-400 uppercase font-semibold border-b border-stone-800">
+                      <tr>
+                        <th className="py-3 px-4">Tarikh (Date)</th>
+                        <th className="py-3 px-4 text-center">Total Orders</th>
+                        <th className="py-3 px-4 text-center">Completed</th>
+                        <th className="py-3 px-4 text-center">Active Kitchen</th>
+                        <th className="py-3 px-4 text-center">Cancelled</th>
+                        <th className="py-3 px-4 text-center">Table / Takeaway</th>
+                        <th className="py-3 px-4 text-right">Daily Sale (₹)</th>
+                        <th className="py-3 px-4 text-right">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-stone-800/80">
+                      {salesByDate.map(row => {
+                        const isSelected = row.date === selectedSalesDate;
+                        const isToday = row.date === todayDateStr;
+
+                        return (
+                          <tr 
+                            key={row.date}
+                            className={`transition ${
+                              isSelected
+                                ? 'bg-amber-950/20 border-l-4 border-l-amber-500'
+                                : 'hover:bg-stone-900/40'
+                            }`}
+                          >
+                            <td className="py-3 px-4">
+                              <div className="flex items-center gap-2">
+                                <span className="font-bold text-white font-display">
+                                  {formatIndianDate(row.date)}
+                                </span>
+                                {isToday && (
+                                  <span className="text-[9px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-1.5 py-0.2 rounded-full font-bold">
+                                    TODAY
+                                  </span>
+                                )}
+                              </div>
+                              <span className="text-[10px] text-stone-500 font-mono block">
+                                {row.date}
+                              </span>
+                            </td>
+
+                            <td className="py-3 px-4 text-center font-bold text-stone-200">
+                              {row.totalOrders}
+                            </td>
+
+                            <td className="py-3 px-4 text-center">
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                                {row.completedOrders} Served
+                              </span>
+                            </td>
+
+                            <td className="py-3 px-4 text-center">
+                              {row.activeOrders > 0 ? (
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                                  {row.activeOrders} Active
+                                </span>
+                              ) : (
+                                <span className="text-stone-500 font-mono">-</span>
+                              )}
+                            </td>
+
+                            <td className="py-3 px-4 text-center">
+                              {row.cancelledOrders > 0 ? (
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-500/20 text-red-400 border border-red-500/30">
+                                  {row.cancelledOrders}
+                                </span>
+                              ) : (
+                                <span className="text-stone-500 font-mono">0</span>
+                              )}
+                            </td>
+
+                            <td className="py-3 px-4 text-center text-[11px] text-stone-400 font-mono">
+                              🍽️ {row.dineInOrders} / 🥡 {row.takeawayOrders}
+                            </td>
+
+                            <td className="py-3 px-4 text-right">
+                              <span className="text-sm font-black text-emerald-400 font-display">
+                                ₹{row.totalRevenue.toFixed(0)}
+                              </span>
+                            </td>
+
+                            <td className="py-3 px-4 text-right">
+                              <button
+                                onClick={() => {
+                                  setSelectedSalesDate(row.date);
+                                  window.scrollTo({ top: 300, behavior: 'smooth' });
+                                }}
+                                className={`px-2.5 py-1 rounded-xl text-[11px] font-bold transition flex items-center gap-1 ml-auto ${
+                                  isSelected
+                                    ? 'bg-amber-500 text-black shadow-sm font-black'
+                                    : 'bg-stone-800 hover:bg-stone-700 text-stone-300'
+                                }`}
+                              >
+                                <span>{isSelected ? 'Selected ✓' : 'Report Dekhein 🔍'}</span>
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                    
+                    {/* Grand Total Summary Row */}
+                    <tfoot className="bg-stone-900 border-t-2 border-stone-700 font-bold text-stone-200">
+                      <tr>
+                        <td className="py-3.5 px-4 text-amber-400 font-display font-black uppercase">
+                          LIFETIME GRAND TOTAL (Sabhi Din Ka Total)
+                        </td>
+                        <td className="py-3.5 px-4 text-center text-white text-sm font-black font-mono">
+                          {lifetimeTotals.grandTotalOrders}
+                        </td>
+                        <td className="py-3.5 px-4 text-center text-emerald-400 font-bold">
+                          {lifetimeTotals.grandCompletedOrders}
+                        </td>
+                        <td className="py-3.5 px-4 text-center text-amber-400 font-bold">
+                          {lifetimeTotals.grandActiveOrders}
+                        </td>
+                        <td className="py-3.5 px-4 text-center text-red-400 font-bold">
+                          {lifetimeTotals.grandCancelledOrders}
+                        </td>
+                        <td className="py-3.5 px-4 text-center text-stone-300 font-mono">
+                          🍽️ {lifetimeTotals.grandDineIn} / 🥡 {lifetimeTotals.grandTakeaway}
+                        </td>
+                        <td className="py-3.5 px-4 text-right text-base text-emerald-400 font-black font-display">
+                          ₹{lifetimeTotals.grandRevenue.toFixed(0)}
+                        </td>
+                        <td className="py-3.5 px-4 text-right text-stone-500 text-[10px]">
+                          All Time
+                        </td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              )}
+            </div>
+
+          </div>
+        )}
+
+        {/* TAB 3: MENU & STOCK MANAGEMENT */}
         {activeTab === 'menu' && (
           <div className="space-y-6">
             <div className="flex flex-col sm:flex-row gap-3 items-center justify-between">
