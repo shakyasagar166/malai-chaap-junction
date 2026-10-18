@@ -5,13 +5,10 @@ import {
   Lock, 
   Flame, 
   ArrowLeft, 
-  KeyRound, 
   AlertCircle, 
   User, 
-  Check, 
   Eye, 
   EyeOff, 
-  Sparkles,
   ShieldCheck
 } from 'lucide-react';
 
@@ -20,7 +17,7 @@ export default function AdminLogin({ onLoginSuccess, onCancel }) {
   const [loginMode, setLoginMode] = useState('password'); // 'password' | 'pin'
   
   // Password Mode States
-  const [username, setUsername] = useState('admin');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
@@ -50,10 +47,10 @@ export default function AdminLogin({ onLoginSuccess, onCancel }) {
         login();
         if (onLoginSuccess) onLoginSuccess();
       } else {
-        setError(res.message || 'Galat username ya password. Default: admin / malai@2026');
+        setError(res.message || 'Galat username ya password.');
       }
     } catch (err) {
-      setError('Login fail hua. Try: admin / malai@2026');
+      setError('Login fail hua. Kripya sahi credentials enter karein.');
     } finally {
       setIsLoading(false);
     }
@@ -74,19 +71,13 @@ export default function AdminLogin({ onLoginSuccess, onCancel }) {
         login();
         if (onLoginSuccess) onLoginSuccess();
       } else {
-        setError(res.message || 'Galat PIN. Default PIN: 1234');
+        setError(res.message || 'Galat PIN enter kiya hai.');
       }
     } catch (err) {
-      setError('Login fail hua. Default PIN: 1234');
+      setError('Login fail hua. Kripya sahi PIN enter karein.');
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const autoFillDemo = () => {
-    setUsername('admin');
-    setPassword('malai@2026');
-    setError('');
   };
 
   return (
@@ -163,7 +154,7 @@ export default function AdminLogin({ onLoginSuccess, onCancel }) {
                   type="text"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  placeholder="admin"
+                  placeholder="Username enter karein"
                   className="w-full bg-stone-950 border border-stone-800 rounded-xl pl-10 pr-3.5 py-2.5 text-sm text-stone-100 placeholder-stone-600 focus:outline-none focus:border-orange-500"
                 />
               </div>
@@ -179,7 +170,7 @@ export default function AdminLogin({ onLoginSuccess, onCancel }) {
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="malai@2026"
+                  placeholder="Password enter karein"
                   className="w-full bg-stone-950 border border-stone-800 rounded-xl pl-10 pr-10 py-2.5 text-sm text-stone-100 placeholder-stone-600 focus:outline-none focus:border-orange-500"
                 />
                 <button
@@ -198,16 +189,6 @@ export default function AdminLogin({ onLoginSuccess, onCancel }) {
               className="w-full py-3 rounded-2xl bg-gradient-to-r from-orange-600 via-orange-500 to-amber-500 hover:from-orange-500 hover:to-amber-400 text-white font-bold text-sm shadow-glow-tandoor active:scale-95 transition disabled:opacity-50"
             >
               {isLoading ? 'Verifying...' : 'Login to Admin Panel'}
-            </button>
-
-            {/* Quick 1-Click Auto Fill Demo */}
-            <button
-              type="button"
-              onClick={autoFillDemo}
-              className="w-full py-2 px-3 rounded-xl bg-stone-950 border border-orange-500/30 text-amber-400 hover:bg-stone-800 text-xs font-semibold flex items-center justify-center gap-1.5 transition"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-              <span>1-Click Auto-Fill (admin / malai@2026)</span>
             </button>
           </form>
         )}
@@ -272,17 +253,6 @@ export default function AdminLogin({ onLoginSuccess, onCancel }) {
             </button>
           </div>
         )}
-
-        {/* Credentials Info Box */}
-        <div className="mt-5 pt-4 border-t border-stone-800/80 text-[11px] text-stone-400 space-y-1">
-          <div>
-            Username: <span className="text-amber-400 font-bold font-mono">admin</span> &bull; 
-            Password: <span className="text-amber-400 font-bold font-mono">malai@2026</span>
-          </div>
-          <div>
-            Master PIN: <span className="text-emerald-400 font-bold font-mono">1234</span>
-          </div>
-        </div>
 
       </div>
     </div>
