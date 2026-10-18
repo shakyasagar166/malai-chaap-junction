@@ -701,6 +701,9 @@ export default function AdminDashboard({ onNavigateToMenu }) {
 
   const filteredOrders = orders.filter(o => {
     if (orderStatusFilter === 'ALL') return true;
+    if (orderStatusFilter === 'PENDING') {
+      return o.status !== 'COMPLETED' && o.status !== 'CANCELLED';
+    }
     return o.status === orderStatusFilter;
   });
 
@@ -806,14 +809,12 @@ export default function AdminDashboard({ onNavigateToMenu }) {
               onClick={() => {
                 setActiveTab('orders');
                 setOrderStatusFilter('PENDING');
-                if (latestNewOrder.id) {
-                  handleVerifyOrder(latestNewOrder.id, 'VERIFIED_ACCEPTED', 'PREPARING');
-                }
+                setLatestNewOrder(null);
               }}
-              className="flex-1 py-2 px-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs shadow-md transition flex items-center justify-center gap-1.5"
+              className="flex-1 py-2 px-3 rounded-xl bg-gradient-to-r from-amber-600 via-orange-600 to-amber-500 hover:from-amber-500 hover:to-orange-500 text-white font-black text-xs shadow-md transition flex items-center justify-center gap-1.5"
             >
               <Check className="w-3.5 h-3.5" />
-              <span>Table Par Baithe Hain (Accept)</span>
+              <span>Order Dekhein (Pending List)</span>
             </button>
             <button
               onClick={() => {
@@ -824,7 +825,7 @@ export default function AdminDashboard({ onNavigateToMenu }) {
               className="py-2 px-3 rounded-xl bg-red-950/80 hover:bg-red-900 text-red-300 border border-red-700/60 font-bold text-xs transition flex items-center gap-1"
             >
               <X className="w-3.5 h-3.5" />
-              <span>Fake / Reject</span>
+              <span>Reject</span>
             </button>
           </div>
         </aside>
@@ -939,9 +940,9 @@ export default function AdminDashboard({ onNavigateToMenu }) {
               </span>
             </div>
             <div>
-              <span className="text-stone-500 font-medium">Active Kitchen Orders:</span>
+              <span className="text-stone-500 font-medium">Pending Orders:</span>
               <span className="ml-1.5 font-bold text-amber-400 text-sm">
-                {orders.filter(o => o.status === 'PENDING' || o.status === 'PREPARING').length}
+                {orders.filter(o => o.status !== 'COMPLETED' && o.status !== 'CANCELLED').length}
               </span>
             </div>
             <div>
@@ -960,7 +961,7 @@ export default function AdminDashboard({ onNavigateToMenu }) {
         {/* Navigation Tabs */}
         <div className="border-t border-stone-800 px-4 sm:px-6 flex gap-2 overflow-x-auto no-scrollbar">
           {[
-            { id: 'orders', label: '🔥 Kitchen Display & Orders', count: orders.filter(o => o.status === 'PENDING' || o.status === 'PREPARING').length },
+            { id: 'orders', label: '🔥 Kitchen & Orders', count: orders.filter(o => o.status !== 'COMPLETED' && o.status !== 'CANCELLED').length },
             { id: 'sales', label: `💰 Aaj Ki Sale & Daily Reports (₹${todaySalesStats.totalRevenue.toFixed(0)})`, count: null },
             { id: 'menu', label: `📋 Menu & Stock (${menuItems.length})`, count: null },
             { id: 'qrs', label: '📱 Table QR Standees (1-20)', count: null },
@@ -1019,7 +1020,7 @@ export default function AdminDashboard({ onNavigateToMenu }) {
                       ₹{todaySalesStats.totalRevenue.toFixed(0)}
                     </span>
                     <span className="text-xs text-stone-300">
-                      &bull; {todaySalesStats.totalOrders} Orders ({todaySalesStats.completedOrders} Delivered &bull; {todaySalesStats.activeOrders} In-Kitchen)
+                      &bull; {todaySalesStats.totalOrders} Orders ({todaySalesStats.completedOrders} Delivered &bull; {todaySalesStats.activeOrders} Pending)
                     </span>
                   </div>
                 </div>
@@ -1043,10 +1044,8 @@ export default function AdminDashboard({ onNavigateToMenu }) {
               <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
                 <span className="text-xs font-semibold text-stone-400 whitespace-nowrap">Filter:</span>
                 {[
-                  { id: 'ALL', label: `Sabhi (${orders.length})` },
-                  { id: 'PENDING', label: `⏳ Pending (${orders.filter(o => o.status === 'PENDING').length})` },
-                  { id: 'PREPARING', label: `🔥 Preparing (${orders.filter(o => o.status === 'PREPARING').length})` },
-                  { id: 'SERVED', label: `🍽️ Served (${orders.filter(o => o.status === 'SERVED').length})` },
+                  { id: 'ALL', label: `Sabhi Orders (${orders.length})` },
+                  { id: 'PENDING', label: `⏳ Pending Orders (${orders.filter(o => o.status !== 'COMPLETED' && o.status !== 'CANCELLED').length})` },
                   { id: 'COMPLETED', label: `✅ Completed (${orders.filter(o => o.status === 'COMPLETED').length})` },
                   { id: 'CANCELLED', label: `❌ Cancelled (${orders.filter(o => o.status === 'CANCELLED').length})` },
                 ].map(f => (
@@ -1055,7 +1054,7 @@ export default function AdminDashboard({ onNavigateToMenu }) {
                     onClick={() => setOrderStatusFilter(f.id)}
                     className={`px-3 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap ${
                       orderStatusFilter === f.id
-                        ? 'bg-amber-500 text-black shadow-sm'
+                        ? 'bg-amber-500 text-black shadow-sm font-black'
                         : 'bg-stone-900 text-stone-400 hover:text-stone-200 border border-stone-800'
                     }`}
                   >
@@ -1095,20 +1094,19 @@ export default function AdminDashboard({ onNavigateToMenu }) {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {filteredOrders.map(order => {
-                  const isPending = order.status === 'PENDING';
-                  const isPreparing = order.status === 'PREPARING';
-                  const isServed = order.status === 'SERVED';
                   const isCompleted = order.status === 'COMPLETED';
+                  const isCancelled = order.status === 'CANCELLED' || order.verificationStatus === 'REJECTED_FAKE';
+                  const isPending = !isCompleted && !isCancelled;
 
                   return (
                     <div
                       key={order.id}
                       className={`p-5 rounded-2xl border transition-all flex flex-col justify-between ${
                         isPending
-                          ? 'bg-orange-950/20 border-orange-500/50 shadow-glow-tandoor'
-                          : isPreparing
-                          ? 'bg-amber-950/20 border-amber-500/50'
-                          : 'bg-stone-900/80 border-stone-800'
+                          ? 'bg-stone-900/90 border-amber-500/60 shadow-glow-tandoor ring-1 ring-amber-500/30'
+                          : isCompleted
+                          ? 'bg-stone-900/60 border-emerald-500/40'
+                          : 'bg-stone-950/80 border-stone-800 opacity-70'
                       }`}
                     >
                       <div>
@@ -1123,16 +1121,14 @@ export default function AdminDashboard({ onNavigateToMenu }) {
                             </div>
                           </div>
 
-                          <span className={`text-[10px] font-black uppercase px-2.5 py-1 rounded-full border ${
+                          <span className={`text-[10px] font-black uppercase px-2.5 py-1 rounded-full border flex items-center gap-1 ${
                             isPending
-                              ? 'bg-orange-500 text-white border-orange-400 animate-pulse'
-                              : isPreparing
-                              ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
-                              : isServed
-                              ? 'bg-blue-500/20 text-blue-300 border-blue-500/40'
-                              : 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40'
+                              ? 'bg-amber-500 text-black border-amber-300 animate-pulse font-black'
+                              : isCompleted
+                              ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40'
+                              : 'bg-red-500/20 text-red-400 border-red-500/40'
                           }`}>
-                            {order.status}
+                            {isPending ? '⏳ PENDING' : isCompleted ? '✅ COMPLETED' : '❌ CANCELLED'}
                           </span>
                         </div>
 
@@ -1244,15 +1240,15 @@ export default function AdminDashboard({ onNavigateToMenu }) {
                             </div>
 
                             {/* Verification Decision Buttons for Pending Orders */}
-                            {order.status === 'PENDING' && order.verificationStatus !== 'REJECTED_FAKE' && (
+                            {isPending && order.verificationStatus !== 'REJECTED_FAKE' && (
                               <div className="pt-2 flex gap-2">
                                 <button
-                                  onClick={() => handleVerifyOrder(order.id, 'VERIFIED_ACCEPTED', 'PREPARING')}
+                                  onClick={() => handleVerifyOrder(order.id, 'VERIFIED_ACCEPTED', 'PENDING')}
                                   className="flex-1 py-1.5 px-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[11px] flex items-center justify-center gap-1 shadow-sm transition"
-                                  title="Confirm customer is sitting at Table and send order to kitchen"
+                                  title="Confirm customer is sitting at Table"
                                 >
                                   <Check className="w-3.5 h-3.5" />
-                                  <span>Table Par Baithe Hain (Accept)</span>
+                                  <span>Table Par Baithe Hain (Confirm)</span>
                                 </button>
                                 <button
                                   onClick={() => handleRejectFakeOrder(order.id, order.tableNumber)}
@@ -1285,129 +1281,41 @@ export default function AdminDashboard({ onNavigateToMenu }) {
                         </div>
                       </div>
 
-                      {/* In-Card Status & Next Action Control Bar */}
+                      {/* In-Card Simple Complete & Action Bar */}
                       <div className="mt-4 pt-3.5 border-t border-stone-800/80 space-y-3">
                         
-                        {/* 1. BIG PROMINENT ACCEPT & NEXT-ACTION BUTTONS */}
-                        {order.status === 'PENDING' && (
-                          <div className="space-y-2">
-                            <button
-                              onClick={() => handleUpdateStatus(order.id, 'PREPARING')}
-                              className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-orange-600 via-orange-500 to-amber-500 hover:from-orange-500 hover:to-amber-400 text-white font-black text-sm shadow-glow-tandoor flex items-center justify-center gap-2.5 transition active:scale-98 border border-orange-400/50"
-                              title="Order accept karein aur kitchen me prepare hone bhejein"
-                            >
-                              <Check className="w-5 h-5 flex-shrink-0" />
-                              <Flame className="w-5 h-5 flex-shrink-0" />
-                              <span>✓ ACCEPT ORDER ➔ Kitchen Me Bhejo (Preparing)</span>
-                            </button>
-
-                            <button
-                              onClick={() => handleUpdateStatus(order.id, 'SERVED')}
-                              className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-bold text-xs shadow-md flex items-center justify-center gap-2 transition active:scale-98"
-                              title="Khana ready hai to direct Served mark karein"
-                            >
-                              <Utensils className="w-4 h-4 flex-shrink-0" />
-                              <span>✓ Direct Accept &amp; Served (Table Par Bhejo) 🍽️ ➔</span>
-                            </button>
-                          </div>
-                        )}
-
-                        {order.status === 'PREPARING' && (
-                          <button
-                            onClick={() => handleUpdateStatus(order.id, 'SERVED')}
-                            className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-blue-600 hover:from-emerald-500 hover:to-blue-500 text-white font-black text-sm shadow-xl flex items-center justify-center gap-2.5 transition active:scale-98 border-2 border-emerald-400/70 shadow-glow"
-                            title="Khana tandoor se ban gaya! Accept karke Served mark karein"
-                          >
-                            <Check className="w-5 h-5 flex-shrink-0" />
-                            <Utensils className="w-5 h-5 flex-shrink-0" />
-                            <span>✓ ACCEPT &amp; MARK AS SERVED (Table Par Bhejo) 🍽️ ➔</span>
-                          </button>
-                        )}
-
-                        {order.status === 'SERVED' && (
+                        {/* SIMPLE ONE-CLICK COMPLETE WHEN FOOD REACHES CUSTOMER */}
+                        {isPending && (
                           <button
                             onClick={() => handleUpdateStatus(order.id, 'COMPLETED')}
-                            className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 hover:from-emerald-500 hover:to-teal-400 text-white font-black text-sm shadow-xl flex items-center justify-center gap-2.5 transition active:scale-98 border border-emerald-400/50"
-                            title="Order poora ho gaya & bill pay ho gaya"
+                            className="w-full py-4 px-4 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 hover:from-emerald-500 hover:to-teal-400 text-white font-black text-sm shadow-xl flex items-center justify-center gap-2.5 transition active:scale-98 border-2 border-emerald-400/60 shadow-glow"
+                            title="Customer ko order pahuch gaya! Order Complete mark karein"
                           >
                             <CheckCircle2 className="w-5 h-5 flex-shrink-0" />
-                            <span>✓ COMPLETE ORDER &amp; BILL PAID (Complete) ✅ ➔</span>
+                            <span>✅ Order Complete Karein (Customer Ko Pahuch Gaya)</span>
                           </button>
                         )}
 
-                        {order.status === 'COMPLETED' && (
-                          <div className="py-2.5 px-3 rounded-xl bg-emerald-950/60 border border-emerald-500/40 text-emerald-300 text-xs font-bold flex items-center justify-center gap-2">
-                            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                            <span>Order Safaltapoorvak Complete Ho Chuka Hai</span>
-                          </div>
-                        )}
-
-                        {/* 2. DIRECT STATUS CHANGER (Manual override buttons for all 4 states) */}
-                        <div className="space-y-1.5 pt-1">
-                          <div className="flex items-center justify-between text-[11px] font-bold text-stone-400">
-                            <span className="flex items-center gap-1.5 text-stone-300">
-                              <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
-                              Order Status:
-                            </span>
-                            <span className="text-[10px] text-stone-500">
-                              (Click to switch status anytime)
-                            </span>
-                          </div>
-
-                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                        {isCompleted && (
+                          <div className="flex items-center justify-between p-3.5 rounded-2xl bg-emerald-950/70 border border-emerald-500/50 text-emerald-300 text-xs font-bold">
+                            <div className="flex items-center gap-2.5">
+                              <div className="w-7 h-7 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
+                                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                              </div>
+                              <div>
+                                <div className="font-black text-emerald-300">✓ Customer Ko Order Pahuch Gaya</div>
+                                <div className="text-[10px] text-emerald-400/70 font-normal">Order Safaltapoorvak Complete Ho Chuka Hai</div>
+                              </div>
+                            </div>
                             <button
                               onClick={() => handleUpdateStatus(order.id, 'PENDING')}
-                              className={`py-2 px-1.5 rounded-xl text-xs font-black transition flex items-center justify-center gap-1 ${
-                                order.status === 'PENDING'
-                                  ? 'bg-gradient-to-r from-amber-500 to-yellow-500 text-black shadow-lg ring-2 ring-amber-300 scale-[1.02]'
-                                  : 'bg-stone-800/90 text-stone-300 hover:bg-stone-700 hover:text-white border border-stone-700/60'
-                              }`}
-                              title="Status ko Pending set karein"
+                              className="px-2.5 py-1.5 rounded-xl bg-stone-900 hover:bg-stone-800 text-stone-400 hover:text-white border border-stone-700 text-[10px] font-semibold transition active:scale-95"
+                              title="Galti se complete ho gaya to wapas pending karein"
                             >
-                              <Clock className="w-3.5 h-3.5" />
-                              <span>Pending</span>
-                            </button>
-
-                            <button
-                              onClick={() => handleUpdateStatus(order.id, 'PREPARING')}
-                              className={`py-2 px-1.5 rounded-xl text-xs font-black transition flex items-center justify-center gap-1 ${
-                                order.status === 'PREPARING'
-                                  ? 'bg-gradient-to-r from-orange-600 to-amber-600 text-white shadow-glow-tandoor ring-2 ring-orange-400 scale-[1.02]'
-                                  : 'bg-stone-800/90 text-stone-300 hover:bg-orange-950/40 hover:text-orange-300 border border-stone-700/60'
-                              }`}
-                              title="Kitchen me Preparing mark karein"
-                            >
-                              <Flame className="w-3.5 h-3.5" />
-                              <span>Preparing</span>
-                            </button>
-
-                            <button
-                              onClick={() => handleUpdateStatus(order.id, 'SERVED')}
-                              className={`py-2 px-1.5 rounded-xl text-xs font-black transition flex items-center justify-center gap-1 ${
-                                order.status === 'SERVED'
-                                  ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-lg ring-2 ring-blue-300 scale-[1.02]'
-                                  : 'bg-stone-800/90 text-stone-300 hover:bg-blue-950/40 hover:text-blue-300 border border-stone-700/60'
-                              }`}
-                              title="Table par Served mark karein"
-                            >
-                              <Utensils className="w-3.5 h-3.5" />
-                              <span>Served</span>
-                            </button>
-
-                            <button
-                              onClick={() => handleUpdateStatus(order.id, 'COMPLETED')}
-                              className={`py-2 px-1.5 rounded-xl text-xs font-black transition flex items-center justify-center gap-1 ${
-                                order.status === 'COMPLETED'
-                                  ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-lg ring-2 ring-emerald-300 scale-[1.02]'
-                                  : 'bg-stone-800/90 text-stone-300 hover:bg-emerald-950/40 hover:text-emerald-300 border border-stone-700/60'
-                              }`}
-                              title="Order Complete mark karein"
-                            >
-                              <CheckCircle2 className="w-3.5 h-3.5" />
-                              <span>Complete</span>
+                              ↩ Wapas Pending
                             </button>
                           </div>
-                        </div>
+                        )}
 
                         {/* Card Bottom Row: Reject & Delete */}
                         <div className="flex items-center justify-between gap-2 pt-1 text-xs">
@@ -1752,18 +1660,14 @@ export default function AdminDashboard({ onNavigateToMenu }) {
                             <span className="text-sm font-black text-amber-400 font-display block">
                               ₹{o.total?.toFixed(0)}
                             </span>
-                            <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full border inline-block ${
-                              o.status === 'PENDING'
-                                ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
-                                : o.status === 'PREPARING'
-                                ? 'bg-orange-500/20 text-orange-300 border-orange-500/40'
-                                : o.status === 'SERVED'
-                                ? 'bg-blue-500/20 text-blue-300 border-blue-500/40'
-                                : o.status === 'COMPLETED'
+                            <span className={`text-[9px] font-black uppercase px-2.5 py-0.5 rounded-full border inline-block ${
+                              o.status === 'COMPLETED'
                                 ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40'
-                                : 'bg-red-500/20 text-red-400 border-red-500/40'
+                                : o.status === 'CANCELLED'
+                                ? 'bg-red-500/20 text-red-400 border-red-500/40'
+                                : 'bg-amber-500/20 text-amber-300 border-amber-500/40'
                             }`}>
-                              {o.status}
+                              {o.status === 'COMPLETED' ? 'COMPLETED' : o.status === 'CANCELLED' ? 'CANCELLED' : 'PENDING'}
                             </span>
                           </div>
                         </div>
@@ -1774,53 +1678,41 @@ export default function AdminDashboard({ onNavigateToMenu }) {
                         </div>
 
                         {/* Fast Status Change Row */}
-                        <div className="flex items-center justify-between gap-1.5 pt-1.5 border-t border-stone-800/60 flex-wrap">
-                          {o.status === 'PREPARING' && (
-                            <button
-                              onClick={() => handleUpdateStatus(o.id, 'SERVED')}
-                              className="py-1 px-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-black text-[11px] transition flex items-center gap-1 shadow-md"
-                              title="Table par Served mark karein"
-                            >
-                              <Utensils className="w-3 h-3" />
-                              <span>Mark Served 🍽️ ➔</span>
-                            </button>
-                          )}
-                          {o.status === 'PENDING' && (
-                            <button
-                              onClick={() => handleUpdateStatus(o.id, 'PREPARING')}
-                              className="py-1 px-2.5 rounded-xl bg-orange-600 hover:bg-orange-500 text-white font-black text-[11px] transition flex items-center gap-1 shadow-md"
-                              title="Kitchen me Preparing mark karein"
-                            >
-                              <Flame className="w-3 h-3" />
-                              <span>Send to Kitchen 🔥 ➔</span>
-                            </button>
-                          )}
-                          {o.status === 'SERVED' && (
+                        <div className="flex items-center justify-between gap-2 pt-1.5 border-t border-stone-800/60">
+                          {o.status !== 'COMPLETED' && o.status !== 'CANCELLED' ? (
                             <button
                               onClick={() => handleUpdateStatus(o.id, 'COMPLETED')}
-                              className="py-1 px-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-[11px] transition flex items-center gap-1 shadow-md"
-                              title="Order Complete mark karein"
+                              className="py-1.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs transition flex items-center gap-1.5 shadow-md active:scale-95"
+                              title="Customer ko khana pahuch gaya, complete mark karein"
                             >
-                              <CheckCircle2 className="w-3 h-3" />
-                              <span>Mark Complete ✅ ➔</span>
+                              <CheckCircle2 className="w-3.5 h-3.5" />
+                              <span>Order Complete Karein ✅</span>
                             </button>
+                          ) : o.status === 'COMPLETED' ? (
+                            <div className="flex items-center gap-2">
+                              <span className="text-[11px] font-bold text-emerald-400 flex items-center gap-1">
+                                <CheckCircle2 className="w-3.5 h-3.5" /> Delivered
+                              </span>
+                              <button
+                                onClick={() => handleUpdateStatus(o.id, 'PENDING')}
+                                className="py-1 px-2 rounded-lg bg-stone-800 hover:bg-stone-700 text-stone-400 hover:text-white text-[10px] font-medium transition"
+                                title="Wapas pending karein"
+                              >
+                                ↩ Pending
+                              </button>
+                            </div>
+                          ) : (
+                            <span className="text-[11px] font-bold text-red-400">Cancelled</span>
                           )}
 
-                          <div className="flex items-center gap-1 ml-auto overflow-x-auto no-scrollbar">
-                            {['PENDING', 'PREPARING', 'SERVED', 'COMPLETED'].map(st => (
-                              <button
-                                key={st}
-                                onClick={() => handleUpdateStatus(o.id, st)}
-                                className={`py-0.5 px-2 rounded-lg text-[10px] font-bold transition whitespace-nowrap ${
-                                  o.status === st
-                                    ? 'bg-amber-500 text-black font-black'
-                                    : 'bg-stone-800/80 text-stone-400 hover:text-white'
-                                }`}
-                              >
-                                {st === 'PENDING' ? 'Pending' : st === 'PREPARING' ? 'Preparing' : st === 'SERVED' ? 'Served' : 'Complete'}
-                              </button>
-                            ))}
-                          </div>
+                          <button
+                            onClick={() => handleDeleteOrder(o.id, o.orderNumber)}
+                            className="py-1 px-2.5 rounded-lg bg-stone-900 hover:bg-red-950/80 text-stone-400 hover:text-red-400 border border-stone-800 text-[10px] font-bold transition ml-auto flex items-center gap-1"
+                            title="Delete order"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                            <span>Delete</span>
+                          </button>
                         </div>
                       </div>
                     ))}

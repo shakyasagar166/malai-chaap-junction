@@ -500,7 +500,7 @@ export const restaurantApi = {
       return await res.json();
     } catch (err) {
       const savedOrders = JSON.parse(localStorage.getItem('mcj_orders') || '[]');
-      const active = savedOrders.filter(o => o.status === 'PENDING' || o.status === 'PREPARING').length;
+      const active = savedOrders.filter(o => o.status !== 'COMPLETED' && o.status !== 'CANCELLED').length;
       const totalRev = savedOrders.reduce((sum, o) => sum + (o.total || 0), 0);
       return {
         totalOrdersCount: savedOrders.length,
