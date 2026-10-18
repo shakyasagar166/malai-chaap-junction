@@ -428,7 +428,7 @@ export default function AdminDashboard({ onNavigateToMenu }) {
     }
   };
 
-  const handleVerifyOrder = async (orderId, verificationStatus, nextStatus = 'PREPARING') => {
+  const handleVerifyOrder = async (orderId, verificationStatus, nextStatus = 'PENDING') => {
     try {
       await restaurantApi.updateOrderStatus(orderId, nextStatus, verificationStatus);
       if (latestNewOrder && latestNewOrder.id === orderId) {
@@ -809,12 +809,20 @@ export default function AdminDashboard({ onNavigateToMenu }) {
               onClick={() => {
                 setActiveTab('orders');
                 setOrderStatusFilter('PENDING');
+                if (latestNewOrder.id) {
+                  handleVerifyOrder(latestNewOrder.id, 'VERIFIED_ACCEPTED', 'PENDING');
+                }
                 setLatestNewOrder(null);
               }}
-              className="flex-1 py-2 px-3 rounded-xl bg-gradient-to-r from-amber-600 via-orange-600 to-amber-500 hover:from-amber-500 hover:to-orange-500 text-white font-black text-xs shadow-md transition flex items-center justify-center gap-1.5"
+              className="flex-1 py-2 px-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs shadow-md transition flex items-center justify-center gap-1.5"
+              title="Customer seat confirm karein aur order accept karein"
             >
               <Check className="w-3.5 h-3.5" />
-              <span>Order Dekhein (Pending List)</span>
+              <span>
+                {latestNewOrder.orderType === 'DINE_IN'
+                  ? `Table #${latestNewOrder.tableNumber} Seat Verify Karein ✓`
+                  : 'Takeaway Order Accept Karein ✓'}
+              </span>
             </button>
             <button
               onClick={() => {
@@ -1097,16 +1105,19 @@ export default function AdminDashboard({ onNavigateToMenu }) {
                   const isCompleted = order.status === 'COMPLETED';
                   const isCancelled = order.status === 'CANCELLED' || order.verificationStatus === 'REJECTED_FAKE';
                   const isPending = !isCompleted && !isCancelled;
+                  const isSeatVerified = order.verificationStatus === 'VERIFIED_ACCEPTED';
 
                   return (
                     <div
                       key={order.id}
                       className={`p-5 rounded-2xl border transition-all flex flex-col justify-between ${
-                        isPending
-                          ? 'bg-stone-900/90 border-amber-500/60 shadow-glow-tandoor ring-1 ring-amber-500/30'
-                          : isCompleted
+                        isCompleted
                           ? 'bg-stone-900/60 border-emerald-500/40'
-                          : 'bg-stone-950/80 border-stone-800 opacity-70'
+                          : isCancelled
+                          ? 'bg-stone-950/80 border-stone-800 opacity-70'
+                          : !isSeatVerified
+                          ? 'bg-stone-900/95 border-amber-500/80 shadow-glow-tandoor ring-2 ring-amber-500/40'
+                          : 'bg-stone-900/90 border-emerald-500/60 shadow-lg ring-1 ring-emerald-500/30'
                       }`}
                     >
                       <div>
@@ -1122,13 +1133,21 @@ export default function AdminDashboard({ onNavigateToMenu }) {
                           </div>
 
                           <span className={`text-[10px] font-black uppercase px-2.5 py-1 rounded-full border flex items-center gap-1 ${
-                            isPending
-                              ? 'bg-amber-500 text-black border-amber-300 animate-pulse font-black'
-                              : isCompleted
+                            isCompleted
                               ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40'
-                              : 'bg-red-500/20 text-red-400 border-red-500/40'
+                              : isCancelled
+                              ? 'bg-red-500/20 text-red-400 border-red-500/40'
+                              : !isSeatVerified
+                              ? 'bg-amber-500 text-black border-amber-300 animate-pulse font-black'
+                              : 'bg-emerald-600 text-white border-emerald-400 shadow-glow font-black'
                           }`}>
-                            {isPending ? '⏳ PENDING' : isCompleted ? '✅ COMPLETED' : '❌ CANCELLED'}
+                            {isCompleted
+                              ? '✅ COMPLETED'
+                              : isCancelled
+                              ? '❌ CANCELLED'
+                              : !isSeatVerified
+                              ? (order.orderType === 'DINE_IN' ? '⏳ PENDING (Seat Verify Karein)' : '⏳ PENDING (Accept Karein)')
+                              : '🔥 SEAT VERIFIED (In-Kitchen)'}
                           </span>
                         </div>
 
@@ -1239,27 +1258,25 @@ export default function AdminDashboard({ onNavigateToMenu }) {
                               )}
                             </div>
 
-                            {/* Verification Decision Buttons for Pending Orders */}
-                            {isPending && order.verificationStatus !== 'REJECTED_FAKE' && (
-                              <div className="pt-2 flex gap-2">
-                                <button
-                                  onClick={() => handleVerifyOrder(order.id, 'VERIFIED_ACCEPTED', 'PENDING')}
-                                  className="flex-1 py-1.5 px-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[11px] flex items-center justify-center gap-1 shadow-sm transition"
-                                  title="Confirm customer is sitting at Table"
-                                >
+                            {/* Verification State Banner */}
+                            <div className="pt-2 flex items-center justify-between text-[11px] border-t border-stone-800/80">
+                              {order.verificationStatus === 'VERIFIED_ACCEPTED' ? (
+                                <span className="text-emerald-400 font-bold flex items-center gap-1.5">
                                   <Check className="w-3.5 h-3.5" />
-                                  <span>Table Par Baithe Hain (Confirm)</span>
-                                </button>
-                                <button
-                                  onClick={() => handleRejectFakeOrder(order.id, order.tableNumber)}
-                                  className="py-1.5 px-2.5 rounded-xl bg-red-950/80 hover:bg-red-900 text-red-300 border border-red-700/60 font-bold text-[11px] flex items-center justify-center gap-1 transition"
-                                  title="Reject if table is empty or customer is remote"
-                                >
+                                  <span>Customer Table #{order.tableNumber} Seat Par Confirmed Hai</span>
+                                </span>
+                              ) : order.verificationStatus === 'REJECTED_FAKE' ? (
+                                <span className="text-red-400 font-bold flex items-center gap-1.5">
                                   <X className="w-3.5 h-3.5" />
-                                  <span>Fake / Ghr Se (Reject)</span>
-                                </button>
-                              </div>
-                            )}
+                                  <span>Fake / Remote Order (Rejected)</span>
+                                </span>
+                              ) : (
+                                <span className="text-amber-400 font-bold flex items-center gap-1.5">
+                                  <Clock className="w-3.5 h-3.5 animate-pulse" />
+                                  <span>Pehle niche Step 1 se seat verify karein</span>
+                                </span>
+                              )}
+                            </div>
                           </div>
                         )}
 
@@ -1281,21 +1298,93 @@ export default function AdminDashboard({ onNavigateToMenu }) {
                         </div>
                       </div>
 
-                      {/* In-Card Simple Complete & Action Bar */}
+                      {/* In-Card 2-Step Action Bar (1. Verify Seat -> 2. Complete Order When Served) */}
                       <div className="mt-4 pt-3.5 border-t border-stone-800/80 space-y-3">
                         
-                        {/* SIMPLE ONE-CLICK COMPLETE WHEN FOOD REACHES CUSTOMER */}
-                        {isPending && (
-                          <button
-                            onClick={() => handleUpdateStatus(order.id, 'COMPLETED')}
-                            className="w-full py-4 px-4 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 hover:from-emerald-500 hover:to-teal-400 text-white font-black text-sm shadow-xl flex items-center justify-center gap-2.5 transition active:scale-98 border-2 border-emerald-400/60 shadow-glow"
-                            title="Customer ko order pahuch gaya! Order Complete mark karein"
-                          >
-                            <CheckCircle2 className="w-5 h-5 flex-shrink-0" />
-                            <span>✅ Order Complete Karein (Customer Ko Pahuch Gaya)</span>
-                          </button>
+                        {/* STEP 1: PEHLE VERIFY KAREIN KI CUSTOMER SEAT PAR BAITHA HAI YA NAHI */}
+                        {isPending && !isSeatVerified && (
+                          <div className="space-y-2 p-3.5 rounded-2xl bg-amber-950/40 border-2 border-amber-500/60 shadow-glow-tandoor">
+                            <div className="flex items-center gap-2 text-xs font-black text-amber-300 font-display">
+                              <ShieldAlert className="w-4 h-4 text-amber-400 flex-shrink-0 animate-pulse" />
+                              <span>
+                                {order.orderType === 'DINE_IN'
+                                  ? `STEP 1: Pehle Confirm Karein - Kya Customer Table #${order.tableNumber} Par Baitha Hai?`
+                                  : 'STEP 1: Pehle Takeaway Parcel Order Accept Karein'}
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-stone-300 leading-snug">
+                              {order.orderType === 'DINE_IN'
+                                ? `Table #${order.tableNumber} par customer ko physically check karein. Seat verify hone ke baad hi "Order Complete" ka option unlock hoga.`
+                                : `Takeaway order check karke accept karein. Uske baad "Order Complete" ka option unlock hoga.`}
+                            </p>
+
+                            <button
+                              onClick={() => handleVerifyOrder(order.id, 'VERIFIED_ACCEPTED', 'PENDING')}
+                              className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-amber-500 via-orange-500 to-amber-400 hover:from-amber-400 hover:to-orange-400 text-black font-black text-sm shadow-lg flex items-center justify-center gap-2 transition active:scale-98 border border-amber-300"
+                              title="Customer seat par baitha hai to verify karein"
+                            >
+                              <Check className="w-5 h-5 flex-shrink-0" />
+                              <span>
+                                {order.orderType === 'DINE_IN'
+                                  ? `✓ Ha, Customer Table #${order.tableNumber} Seat Par Baitha Hai (Verify & Accept)`
+                                  : '✓ Takeaway Order Accept Karein'}
+                              </span>
+                            </button>
+
+                            <button
+                              onClick={() => handleRejectFakeOrder(order.id, order.tableNumber)}
+                              className="w-full py-2 px-3 rounded-xl bg-red-950/70 hover:bg-red-900 text-red-300 border border-red-800/60 font-bold text-xs transition flex items-center justify-center gap-1.5"
+                              title="Customer seat par nahi hai to reject karein"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                              <span>❌ Seat Khali Hai / Ghr Se Fake Order (Reject)</span>
+                            </button>
+
+                            <div className="text-[10px] text-amber-400/80 font-medium text-center pt-1 border-t border-amber-500/20">
+                              🔒 Step 2 ("Order Complete") seat verify hone ke baad yahan aayega
+                            </div>
+                          </div>
                         )}
 
+                        {/* STEP 2: SEAT VERIFY HO GAYI - AB JAB FOOD CUSTOMER KO SERVE HO JAYE TO COMPLETE KAREIN */}
+                        {isPending && isSeatVerified && (
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between p-2.5 rounded-xl bg-emerald-950/60 border border-emerald-500/40 text-emerald-300 text-xs font-bold">
+                              <div className="flex items-center gap-2">
+                                <Check className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                                <span>
+                                  {order.orderType === 'DINE_IN'
+                                    ? `✓ Step 1 Complete: Table #${order.tableNumber} Seat Verified`
+                                    : '✓ Step 1 Complete: Takeaway Accepted'}
+                                </span>
+                              </div>
+                              {order.orderType === 'DINE_IN' && (
+                                <button
+                                  onClick={() => handleVerifyOrder(order.id, 'PENDING_VERIFICATION', 'PENDING')}
+                                  className="text-[10px] text-stone-400 hover:text-white underline font-medium ml-2"
+                                  title="Galti se verify ho gaya to wapas unverify karein"
+                                >
+                                  ↩ Wapas Unverify
+                                </button>
+                              )}
+                            </div>
+
+                            <button
+                              onClick={() => handleUpdateStatus(order.id, 'COMPLETED')}
+                              className="w-full py-4 px-4 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 hover:from-emerald-500 hover:to-teal-400 text-white font-black text-sm shadow-xl flex items-center justify-center gap-2.5 transition active:scale-98 border-2 border-emerald-400/60 shadow-glow"
+                              title="Customer ko khana serve ho gaya! Order Complete mark karein"
+                            >
+                              <CheckCircle2 className="w-5 h-5 flex-shrink-0" />
+                              <span>
+                                {order.orderType === 'DINE_IN'
+                                  ? '✅ Step 2: Order Complete Karein (Customer Ko Serve Kar Diya 🍽️)'
+                                  : '✅ Step 2: Order Complete Karein (Parcel Handover Kar Diya 🥡)'}
+                              </span>
+                            </button>
+                          </div>
+                        )}
+
+                        {/* STEP 3: ORDER COMPLETED */}
                         {isCompleted && (
                           <div className="flex items-center justify-between p-3.5 rounded-2xl bg-emerald-950/70 border border-emerald-500/50 text-emerald-300 text-xs font-bold">
                             <div className="flex items-center gap-2.5">
@@ -1303,8 +1392,8 @@ export default function AdminDashboard({ onNavigateToMenu }) {
                                 <CheckCircle2 className="w-4 h-4 text-emerald-400" />
                               </div>
                               <div>
-                                <div className="font-black text-emerald-300">✓ Customer Ko Order Pahuch Gaya</div>
-                                <div className="text-[10px] text-emerald-400/70 font-normal">Order Safaltapoorvak Complete Ho Chuka Hai</div>
+                                <div className="font-black text-emerald-300">✓ Customer Ko Serve Ho Gaya (Order Completed)</div>
+                                <div className="text-[10px] text-emerald-400/70 font-normal">Order Safaltapoorvak Complete Ho Chuka Hai &amp; Sales Me Add Hai</div>
                               </div>
                             </div>
                             <button
@@ -1680,14 +1769,25 @@ export default function AdminDashboard({ onNavigateToMenu }) {
                         {/* Fast Status Change Row */}
                         <div className="flex items-center justify-between gap-2 pt-1.5 border-t border-stone-800/60">
                           {o.status !== 'COMPLETED' && o.status !== 'CANCELLED' ? (
-                            <button
-                              onClick={() => handleUpdateStatus(o.id, 'COMPLETED')}
-                              className="py-1.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs transition flex items-center gap-1.5 shadow-md active:scale-95"
-                              title="Customer ko khana pahuch gaya, complete mark karein"
-                            >
-                              <CheckCircle2 className="w-3.5 h-3.5" />
-                              <span>Order Complete Karein ✅</span>
-                            </button>
+                            o.verificationStatus !== 'VERIFIED_ACCEPTED' ? (
+                              <button
+                                onClick={() => handleVerifyOrder(o.id, 'VERIFIED_ACCEPTED', 'PENDING')}
+                                className="py-1.5 px-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-black text-xs transition flex items-center gap-1 shadow-md active:scale-95"
+                                title="Pehle customer seat verify karein"
+                              >
+                                <Check className="w-3.5 h-3.5" />
+                                <span>Step 1: Seat Verify ✓</span>
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => handleUpdateStatus(o.id, 'COMPLETED')}
+                                className="py-1.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs transition flex items-center gap-1.5 shadow-md active:scale-95"
+                                title="Customer ko khana serve ho gaya, complete mark karein"
+                              >
+                                <CheckCircle2 className="w-3.5 h-3.5" />
+                                <span>Step 2: Order Complete (Serve Ho Gaya) ✅</span>
+                              </button>
+                            )
                           ) : o.status === 'COMPLETED' ? (
                             <div className="flex items-center gap-2">
                               <span className="text-[11px] font-bold text-emerald-400 flex items-center gap-1">
