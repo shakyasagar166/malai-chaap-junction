@@ -59,7 +59,7 @@ export default function OrderSuccess({ initialOrder, onOrderMore }) {
   ];
 
   const handleShareWhatsApp = () => {
-    let msg = `⭐ *Order Placed at Hotel* ⭐\n`;
+    let msg = `⭐ *Order Placed at Restaurant* ⭐\n`;
     msg += `Order No: *${order.orderNumber}*\n`;
     msg += `Table: *${order.tableNumber ? `Table ${order.tableNumber}` : 'Takeaway'}*\n`;
     msg += `Total Amount: *₹${order.total?.toFixed(0)}*\n`;

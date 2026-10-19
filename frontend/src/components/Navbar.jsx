@@ -92,7 +92,7 @@ export default function Navbar({ onNavigate, currentPage }) {
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" title="100% Pure Veg"></span>
               </div>
               <h1 className="text-sm sm:text-lg font-black text-stone-100 tracking-tight font-display leading-none">
-                <span className="text-gradient bg-gradient-to-r from-orange-400 via-amber-300 to-yellow-400 bg-clip-text text-transparent">Hotel</span>
+                <span className="text-gradient bg-gradient-to-r from-orange-400 via-amber-300 to-yellow-400 bg-clip-text text-transparent">Restaurant</span>
               </h1>
             </div>
           </button>

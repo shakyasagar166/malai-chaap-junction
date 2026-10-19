@@ -2,7 +2,7 @@
 // Designed for Svad Malai Chaap Junction, Sector 23, Sanjay Nagar, Ghaziabad
 
 export const RESTAURANT_COORDS = {
-  name: 'Hotel',
+  name: 'Restaurant',
   address: 'Sanjay Nagar, Ghaziabad',
   // Svad Malai Chaap Junction Coordinates
   latitude: 28.69472,

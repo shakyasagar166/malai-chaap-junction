@@ -116,7 +116,7 @@ export default function QrCodeStandeeModal() {
           </div>
 
           <h3 className="text-xl sm:text-2xl font-black text-stone-100 tracking-tight font-display uppercase leading-tight">
-            <span className="text-amber-400">Hotel</span>
+            <span className="text-amber-400">Restaurant</span>
           </h3>
           <p className="text-[11px] text-stone-400 font-medium mt-0.5">
             Pure Vegetarian • Fast Table Service &amp; Dine-In

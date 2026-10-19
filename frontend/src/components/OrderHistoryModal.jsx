@@ -42,7 +42,7 @@ export default function OrderHistoryModal({ onTrackOrder }) {
   };
 
   const handleShareWhatsAppReceipt = (order) => {
-    let msg = `*⭐ HOTEL ⭐*\n`;
+    let msg = `*⭐ RESTAURANT ⭐*\n`;
     msg += `_100% Pure Vegetarian Food & Dining_\n`;
     msg += `-----------------------------------------\n`;
     msg += `*ORDER RECEIPT*\n`;
@@ -227,7 +227,7 @@ export default function OrderHistoryModal({ onTrackOrder }) {
               <div className="space-y-1.5 max-w-sm mx-auto">
                 <h4 className="text-base font-bold text-stone-200">Abhi tak koi order nahi hai</h4>
                 <p className="text-xs text-stone-400 leading-relaxed">
-                  Aap jo bhi dishes Hotel se order karenge, unki complete receipt, live status aur re-order option yahan hamesha saved rahenge.
+                  Aap jo bhi dishes Restaurant se order karenge, unki complete receipt, live status aur re-order option yahan hamesha saved rahenge.
                 </p>
               </div>
               <button

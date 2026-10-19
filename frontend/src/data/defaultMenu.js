@@ -1,15 +1,15 @@
-// Complete Menu Data for Hotel
+// Complete Menu Data for Restaurant
 // 100% Pure Vegetarian Food & Dining
 
 export const RESTAURANT_INFO = {
-  name: "Hotel",
-  shortName: "Hotel",
+  name: "Restaurant",
+  shortName: "Restaurant",
   tagline: "Pure Vegetarian Delicious Food & Dining Experience",
   subTagline: "100% Pure Vegetarian Food & Fast Service",
   rating: "4.4",
   reviewsCount: "1.2K",
   priceRange: "₹200–₹1,000",
-  address: "Rooftop & Lounge, Sector - 23, Ghaziabad",
+  address: "Sector - 23, Sanjay Nagar, Ghaziabad",
   phones: ["99-1101-3993", "89-2929-9898"],
   whatsapp: "919911013993",
   openingHours: "12:00 PM – 11:30 PM (Daily)",

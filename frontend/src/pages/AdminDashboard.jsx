@@ -358,7 +358,7 @@ export default function AdminDashboard({ onNavigateToMenu }) {
             if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
               const o = freshOrders[0];
               try {
-                new Notification('🔔 Hotel: Naya Order!', {
+                new Notification('🔔 Restaurant: Naya Order!', {
                   body: `${o.orderType === 'DINE_IN' ? 'Table #' + (o.tableNumber || '-') : 'Takeaway'} | Total: ₹${o.total}`,
                   icon: '/vite.svg'
                 });
@@ -893,7 +893,7 @@ export default function AdminDashboard({ onNavigateToMenu }) {
                 )}
               </div>
               <p className="text-xs text-stone-400">
-                Hotel &bull; Sanjay Nagar, Ghaziabad
+                Restaurant &bull; Sanjay Nagar, Ghaziabad
               </p>
             </div>
           </div>
@@ -1497,7 +1497,7 @@ export default function AdminDashboard({ onNavigateToMenu }) {
                       </span>
                     </div>
                     <p className="text-xs text-stone-400 mt-0.5">
-                      Hotel &bull; Sanjay Nagar, Ghaziabad
+                      Restaurant &bull; Sanjay Nagar, Ghaziabad
                     </p>
                   </div>
                 </div>
@@ -2224,7 +2224,7 @@ export default function AdminDashboard({ onNavigateToMenu }) {
                 </div>
 
                 <h4 className="text-lg font-black text-white uppercase font-display">
-                  <span className="text-amber-400">Hotel</span>
+                  <span className="text-amber-400">Restaurant</span>
                 </h4>
                 <p className="text-[10px] text-stone-400">
                   Pure Veg Dining &bull; Sanjay Nagar, Ghaziabad

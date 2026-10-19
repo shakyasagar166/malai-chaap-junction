@@ -414,7 +414,7 @@ export const restaurantApi = {
     } catch (e) {
       // Backend offline fallback
     }
-    const customerOrders = JSON.parse(localStorage.getItem('hotel_customer_orders') || localStorage.getItem('vinayaka_customer_orders') || localStorage.getItem('mcj_orders') || '[]');
+    const customerOrders = JSON.parse(localStorage.getItem('customer_order_history') || localStorage.getItem('hotel_customer_orders') || localStorage.getItem('vinayaka_customer_orders') || localStorage.getItem('mcj_orders') || '[]');
     const found = customerOrders.find(o => String(o.id) === String(id) || o.orderNumber === String(id));
     if (found) {
       const verOverrides = JSON.parse(localStorage.getItem('mcj_order_verifications') || '{}');

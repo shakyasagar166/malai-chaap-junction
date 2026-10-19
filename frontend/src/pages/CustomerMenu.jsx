@@ -184,7 +184,7 @@ export default function CustomerMenu() {
               </div>
 
               <h1 className="text-2xl sm:text-4xl md:text-5xl font-black text-stone-100 font-display tracking-tight leading-tight">
-                <span className="text-gradient bg-gradient-to-r from-orange-400 via-amber-300 to-yellow-400 bg-clip-text text-transparent">Hotel</span>
+                <span className="text-gradient bg-gradient-to-r from-orange-400 via-amber-300 to-yellow-400 bg-clip-text text-transparent">Restaurant</span>
               </h1>
 
               <p className="text-xs sm:text-base text-stone-300 font-normal leading-relaxed">
