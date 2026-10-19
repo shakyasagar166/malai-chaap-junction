@@ -20,11 +20,21 @@ import {
   Filter,
   Star,
   Send,
-  Smartphone
+  Smartphone,
+  Receipt
 } from 'lucide-react';
 
 export default function CustomerMenu() {
-  const { cartCount, cartTotal, tableNumber, setIsCartOpen, setIsTableModalOpen, setIsQrModalOpen } = useCart();
+  const { 
+    cartCount, 
+    cartTotal, 
+    tableNumber, 
+    setIsCartOpen, 
+    setIsTableModalOpen, 
+    setIsQrModalOpen,
+    orderHistory,
+    setIsOrderHistoryOpen
+  } = useCart();
   
   const [categories, setCategories] = useState(CATEGORIES);
   const [menuItems, setMenuItems] = useState(MENU_ITEMS);
@@ -231,6 +241,18 @@ export default function CustomerMenu() {
                   <Smartphone className="w-4 h-4 text-amber-400" />
                 </button>
               </div>
+
+              {/* Mere Past Orders Shortcut */}
+              {orderHistory && orderHistory.length > 0 && (
+                <button
+                  onClick={() => setIsOrderHistoryOpen(true)}
+                  className="mt-3 w-full py-2 px-3 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-300 text-xs font-bold flex items-center justify-center gap-2 transition group"
+                >
+                  <Receipt className="w-3.5 h-3.5 text-amber-400 group-hover:scale-110 transition-transform" />
+                  <span>Mere Past Orders ({orderHistory.length})</span>
+                  <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:translate-x-0.5 transition-transform" />
+                </button>
+              )}
             </div>
 
           </div>

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useCart } from '../context/CartContext';
 import { RESTAURANT_INFO } from '../data/defaultMenu';
 import { 
   CheckCircle2, 
@@ -9,10 +10,12 @@ import {
   PhoneCall, 
   Share2, 
   Sparkles,
-  MapPin
+  MapPin,
+  Receipt
 } from 'lucide-react';
 
 export default function OrderSuccess({ initialOrder, onOrderMore }) {
+  const { setIsOrderHistoryOpen } = useCart();
   const [order, setOrder] = useState(initialOrder);
   const [simulatedStatusIndex, setSimulatedStatusIndex] = useState(1);
 
@@ -207,6 +210,14 @@ export default function OrderSuccess({ initialOrder, onOrderMore }) {
           >
             <Share2 className="w-4 h-4" />
             <span>Share Receipt</span>
+          </button>
+
+          <button
+            onClick={() => setIsOrderHistoryOpen(true)}
+            className="w-full sm:w-auto py-3 px-5 rounded-2xl bg-stone-900 hover:bg-stone-800 text-amber-300 border border-amber-500/30 font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition"
+          >
+            <Receipt className="w-4 h-4 text-amber-400" />
+            <span>Mere Past Orders</span>
           </button>
         </div>
 

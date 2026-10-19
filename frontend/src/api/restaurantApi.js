@@ -400,6 +400,31 @@ export const restaurantApi = {
     }
   },
 
+  // Get Single Order By ID (for customer tracking & live sync)
+  async getOrderById(id) {
+    try {
+      const res = await fetch(getApiUrl(`/orders/${id}`));
+      if (res.ok) {
+        const order = await res.json();
+        const verOverrides = JSON.parse(localStorage.getItem('mcj_order_verifications') || '{}');
+        const verify = parseVerificationFromOrder(order);
+        const override = verOverrides[order.id] || verOverrides[String(order.id)] || {};
+        return { ...order, ...verify, ...override };
+      }
+    } catch (e) {
+      // Backend offline fallback
+    }
+    const customerOrders = JSON.parse(localStorage.getItem('vinayaka_customer_orders') || localStorage.getItem('mcj_orders') || '[]');
+    const found = customerOrders.find(o => String(o.id) === String(id) || o.orderNumber === String(id));
+    if (found) {
+      const verOverrides = JSON.parse(localStorage.getItem('mcj_order_verifications') || '{}');
+      const verify = parseVerificationFromOrder(found);
+      const override = verOverrides[found.id] || verOverrides[String(found.id)] || {};
+      return { ...found, ...verify, ...override };
+    }
+    return null;
+  },
+
   // Update Order Status & Verification (Admin)
   async updateOrderStatus(id, newStatus, verificationStatus = null) {
     const verOverrides = JSON.parse(localStorage.getItem('mcj_order_verifications') || '{}');

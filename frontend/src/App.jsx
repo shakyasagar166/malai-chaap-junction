@@ -6,6 +6,7 @@ import MobileBottomNav from './components/MobileBottomNav';
 import CartDrawer from './components/CartDrawer';
 import TableSelectorModal from './components/TableSelectorModal';
 import QrCodeStandeeModal from './components/QrCodeStandeeModal';
+import OrderHistoryModal from './components/OrderHistoryModal';
 import CustomerMenu from './pages/CustomerMenu';
 import OrderSuccess from './pages/OrderSuccess';
 import AdminLogin from './pages/AdminLogin';
@@ -85,6 +86,11 @@ function MainApp() {
       <CartDrawer onOrderSuccess={handleOrderSuccess} />
       <TableSelectorModal />
       <QrCodeStandeeModal />
+      <OrderHistoryModal onTrackOrder={(order) => {
+        setLatestOrder(order);
+        setCurrentPage('track');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }} />
 
       {/* Footer */}
       <footer className="no-print py-10 border-t border-stone-800 bg-[#070605] text-center text-xs text-stone-400">

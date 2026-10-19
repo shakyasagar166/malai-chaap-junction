@@ -13,11 +13,21 @@ import {
   Sparkles,
   Lock,
   X,
-  Star
+  Star,
+  Receipt
 } from 'lucide-react';
 
 export default function Navbar({ onNavigate, currentPage }) {
-  const { cartCount, cartTotal, tableNumber, setIsCartOpen, setIsTableModalOpen, setIsQrModalOpen } = useCart();
+  const { 
+    cartCount, 
+    cartTotal, 
+    tableNumber, 
+    setIsCartOpen, 
+    setIsTableModalOpen, 
+    setIsQrModalOpen,
+    orderHistory,
+    setIsOrderHistoryOpen
+  } = useCart();
   const { isAdmin } = useAuth();
   const [isPhoneModalOpen, setIsPhoneModalOpen] = useState(false);
 
@@ -98,6 +108,21 @@ export default function Navbar({ onNavigate, currentPage }) {
               <div className="w-2 h-2 rounded-full bg-orange-500"></div>
               <span>{tableNumber ? `Table ${tableNumber}` : 'Select Table'}</span>
               <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:translate-x-0.5 transition-transform" />
+            </button>
+
+            {/* Orders History Button */}
+            <button
+              onClick={() => setIsOrderHistoryOpen(true)}
+              className="relative flex items-center gap-1.5 px-2.5 sm:px-3 py-2 rounded-xl bg-stone-900 hover:bg-stone-800 border border-stone-800 hover:border-amber-500/40 text-stone-300 hover:text-amber-400 text-xs sm:text-sm font-semibold transition group shadow-sm"
+              title="Mere Orders / Order History"
+            >
+              <Receipt className="w-4 h-4 text-amber-400 group-hover:scale-110 transition-transform" />
+              <span className="hidden sm:inline">Orders</span>
+              {orderHistory && orderHistory.length > 0 && (
+                <span className="bg-amber-500/20 text-amber-400 text-[10px] font-black px-1.5 py-0.2 rounded-full border border-amber-500/40">
+                  {orderHistory.length}
+                </span>
+              )}
             </button>
 
             {/* Cart Button */}

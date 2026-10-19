@@ -35,7 +35,8 @@ export default function CartDrawer({ onOrderSuccess }) {
     orderType,
     setIsTableModalOpen,
     isCartOpen, 
-    setIsCartOpen 
+    setIsCartOpen,
+    addOrderToHistory
   } = useCart();
 
   const [customerName, setCustomerName] = useState('');
@@ -92,6 +93,41 @@ export default function CartDrawer({ onOrderSuccess }) {
 
       const orderResult = await restaurantApi.placeOrder(orderPayload);
 
+      // Save complete order snapshot into Customer's personal Order History
+      try {
+        const historyRecord = {
+          id: orderResult.id || Date.now(),
+          orderNumber: orderResult.orderNumber,
+          tableNumber: orderType === 'DINE_IN' ? tableNumber : null,
+          orderType: orderType,
+          customerName: customerName.trim() || 'Guest',
+          customerPhone: customerPhone.trim() || '',
+          subtotal: cartSubtotal,
+          tax: cartTax,
+          total: orderResult.total || cartTotal,
+          paymentMethod: paymentMethod || 'UPI / Counter',
+          notes: orderNotes.trim(),
+          status: orderResult.status || 'PENDING',
+          verificationStatus: orderResult.verificationStatus || 'PENDING_VERIFICATION',
+          items: cart.map(item => ({
+            menuItemId: item.menuItemId,
+            name: item.name,
+            portion: item.portion,
+            portionUnit: item.portionUnit,
+            quantity: item.quantity,
+            price: item.price,
+            notes: item.notes || '',
+            categorySlug: item.categorySlug
+          })),
+          createdAt: orderResult.createdAt || new Date().toISOString()
+        };
+        if (addOrderToHistory) {
+          addOrderToHistory(historyRecord);
+        }
+      } catch (e) {
+        console.warn('Could not record order to local history:', e);
+      }
+
       // Trigger cross-tab notification event for instant real-time admin alert
       try {
         localStorage.setItem('mcj_latest_order_event', JSON.stringify({
@@ -135,6 +171,39 @@ export default function CartDrawer({ onOrderSuccess }) {
   // Direct WhatsApp Order
   const handleWhatsAppOrder = () => {
     if (cart.length === 0) return;
+
+    // Record to customer order history
+    try {
+      const waRecord = {
+        id: Date.now(),
+        orderNumber: `VR-WA-${Date.now().toString().slice(-6)}`,
+        tableNumber: orderType === 'DINE_IN' ? tableNumber : null,
+        orderType: orderType,
+        customerName: customerName.trim() || 'Guest',
+        customerPhone: customerPhone.trim() || '',
+        subtotal: cartSubtotal,
+        tax: cartTax,
+        total: cartTotal,
+        paymentMethod: 'WhatsApp Order',
+        notes: orderNotes.trim(),
+        status: 'PENDING',
+        verificationStatus: 'PENDING_VERIFICATION',
+        items: cart.map(item => ({
+          menuItemId: item.menuItemId,
+          name: item.name,
+          portion: item.portion,
+          portionUnit: item.portionUnit,
+          quantity: item.quantity,
+          price: item.price,
+          notes: item.notes || '',
+          categorySlug: item.categorySlug
+        })),
+        createdAt: new Date().toISOString()
+      };
+      if (addOrderToHistory) {
+        addOrderToHistory(waRecord);
+      }
+    } catch (e) {}
 
     let text = `*⭐ NEW ORDER - VINAYAKA RESTAURANT (ROOFTOP & LOUNGE) ⭐*\n`;
     text += `-----------------------------------------\n`;

@@ -120,6 +120,75 @@ export const CartProvider = ({ children }) => {
   const cartTotal = cartSubtotal + cartTax;
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
+  // Customer Order History state (persisted locally on device)
+  const [orderHistory, setOrderHistory] = useState(() => {
+    try {
+      const saved = localStorage.getItem('vinayaka_customer_orders');
+      if (saved) return JSON.parse(saved);
+      const legacy = localStorage.getItem('mcj_orders');
+      return legacy ? JSON.parse(legacy) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const [isOrderHistoryOpen, setIsOrderHistoryOpen] = useState(false);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('vinayaka_customer_orders', JSON.stringify(orderHistory));
+    } catch (e) {}
+  }, [orderHistory]);
+
+  const addOrderToHistory = (newOrder) => {
+    setOrderHistory(prev => {
+      const filtered = prev.filter(o => 
+        o.orderNumber !== newOrder.orderNumber && 
+        String(o.id) !== String(newOrder.id)
+      );
+      const updated = [newOrder, ...filtered];
+      try {
+        localStorage.setItem('vinayaka_customer_orders', JSON.stringify(updated));
+      } catch (e) {}
+      return updated;
+    });
+  };
+
+  const clearOrderHistory = () => {
+    setOrderHistory([]);
+    try {
+      localStorage.removeItem('vinayaka_customer_orders');
+    } catch (e) {}
+  };
+
+  const reorderOrder = (order) => {
+    if (!order || !order.items || order.items.length === 0) return;
+
+    order.items.forEach(item => {
+      const mockMenuItem = {
+        id: item.menuItemId || item.id || Date.now(),
+        name: item.itemName || item.name,
+        singlePrice: item.pricePerUnit || item.price,
+        hasSinglePrice: item.portion === 'SINGLE',
+        priceHalf: item.pricePerUnit || item.price,
+        priceFull: item.pricePerUnit || item.price,
+        portionUnit: item.portionUnit || null,
+        categorySlug: item.categorySlug || 'veg-tandoori'
+      };
+      addToCart(mockMenuItem, item.portion || 'FULL', item.quantity || 1, item.notes || '');
+    });
+
+    if (order.tableNumber) {
+      setTableNumber(order.tableNumber);
+    }
+    if (order.orderType) {
+      setOrderType(order.orderType);
+    }
+
+    setIsOrderHistoryOpen(false);
+    setIsCartOpen(true);
+  };
+
   return (
     <CartContext.Provider
       value={{
@@ -144,7 +213,14 @@ export const CartProvider = ({ children }) => {
         isTableModalOpen,
         setIsTableModalOpen,
         isQrModalOpen,
-        setIsQrModalOpen
+        setIsQrModalOpen,
+        orderHistory,
+        setOrderHistory,
+        isOrderHistoryOpen,
+        setIsOrderHistoryOpen,
+        addOrderToHistory,
+        clearOrderHistory,
+        reorderOrder
       }}
     >
       {children}

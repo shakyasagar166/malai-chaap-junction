@@ -8,11 +8,21 @@ import {
   Search, 
   Lock, 
   Sparkles,
-  MapPin
+  MapPin,
+  Receipt
 } from 'lucide-react';
 
 export default function MobileBottomNav({ currentPage, onNavigate, onSearchFocus }) {
-  const { cartCount, cartTotal, tableNumber, setIsCartOpen, setIsTableModalOpen, setIsQrModalOpen } = useCart();
+  const { 
+    cartCount, 
+    cartTotal, 
+    tableNumber, 
+    setIsCartOpen, 
+    setIsTableModalOpen, 
+    setIsQrModalOpen,
+    orderHistory,
+    setIsOrderHistoryOpen
+  } = useCart();
   const { isAdmin } = useAuth();
 
   return (
@@ -63,15 +73,20 @@ export default function MobileBottomNav({ currentPage, onNavigate, onSearchFocus
           </button>
         </div>
 
-        {/* 4. Table QR Standee */}
+        {/* 4. My Orders Tab */}
         <button
-          onClick={() => setIsQrModalOpen(true)}
-          className="flex flex-col items-center justify-center gap-1 text-stone-500 hover:text-amber-400 transition"
+          onClick={() => setIsOrderHistoryOpen(true)}
+          className="flex flex-col items-center justify-center gap-1 text-stone-400 hover:text-amber-400 transition relative"
         >
-          <div className="p-1 rounded-xl">
-            <QrCode className="w-5 h-5" />
+          <div className="p-1 rounded-xl relative">
+            <Receipt className="w-5 h-5 text-amber-400" />
+            {orderHistory && orderHistory.length > 0 && (
+              <span className="absolute -top-1 -right-1 bg-amber-500 text-stone-950 text-[9px] font-black px-1 rounded-full">
+                {orderHistory.length}
+              </span>
+            )}
           </div>
-          <span className="text-[10px] font-bold tracking-tight">QR Standee</span>
+          <span className="text-[10px] font-bold tracking-tight">Orders</span>
         </button>
 
         {/* 5. Admin Portal */}
