@@ -109,17 +109,17 @@ export default function QrCodeStandeeModal() {
               <Flame className="w-5 h-5" />
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="text-xs font-black text-amber-400 tracking-wider">ROOFTOP & LOUNGE</span>
+              <span className="text-xs font-black text-amber-400 tracking-wider">SMART QR MENU</span>
               <span className="w-2 h-2 rounded-full bg-emerald-500 block"></span>
-              <span className="text-[10px] text-amber-300 font-bold bg-amber-500/10 px-1 rounded">⭐ 4.4</span>
+              <span className="text-[10px] text-emerald-400 font-bold bg-emerald-500/10 px-1 rounded">100% PURE VEG</span>
             </div>
           </div>
 
           <h3 className="text-xl sm:text-2xl font-black text-stone-100 tracking-tight font-display uppercase leading-tight">
-            Vinayaka <span className="text-amber-400">Restaurant</span>
+            <span className="text-amber-400">Hotel</span>
           </h3>
           <p className="text-[11px] text-stone-400 font-medium mt-0.5">
-            Rooftop & Lounge • ₹200–₹1,000 • 100% Pure Vegetarian
+            Pure Vegetarian • Fast Table Service &amp; Dine-In
           </p>
 
           {/* Table Badge */}

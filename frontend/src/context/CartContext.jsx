@@ -123,7 +123,7 @@ export const CartProvider = ({ children }) => {
   // Customer Order History state (persisted locally on device)
   const [orderHistory, setOrderHistory] = useState(() => {
     try {
-      const saved = localStorage.getItem('vinayaka_customer_orders');
+      const saved = localStorage.getItem('hotel_customer_orders') || localStorage.getItem('vinayaka_customer_orders');
       if (saved) return JSON.parse(saved);
       const legacy = localStorage.getItem('mcj_orders');
       return legacy ? JSON.parse(legacy) : [];
@@ -136,7 +136,7 @@ export const CartProvider = ({ children }) => {
 
   useEffect(() => {
     try {
-      localStorage.setItem('vinayaka_customer_orders', JSON.stringify(orderHistory));
+      localStorage.setItem('hotel_customer_orders', JSON.stringify(orderHistory));
     } catch (e) {}
   }, [orderHistory]);
 
@@ -148,7 +148,7 @@ export const CartProvider = ({ children }) => {
       );
       const updated = [newOrder, ...filtered];
       try {
-        localStorage.setItem('vinayaka_customer_orders', JSON.stringify(updated));
+        localStorage.setItem('hotel_customer_orders', JSON.stringify(updated));
       } catch (e) {}
       return updated;
     });
@@ -157,6 +157,7 @@ export const CartProvider = ({ children }) => {
   const clearOrderHistory = () => {
     setOrderHistory([]);
     try {
+      localStorage.removeItem('hotel_customer_orders');
       localStorage.removeItem('vinayaka_customer_orders');
     } catch (e) {}
   };

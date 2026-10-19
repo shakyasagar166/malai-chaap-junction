@@ -358,7 +358,7 @@ export default function AdminDashboard({ onNavigateToMenu }) {
             if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
               const o = freshOrders[0];
               try {
-                new Notification('🔔 Vinayaka Restaurant: Naya Order!', {
+                new Notification('🔔 Hotel: Naya Order!', {
                   body: `${o.orderType === 'DINE_IN' ? 'Table #' + (o.tableNumber || '-') : 'Takeaway'} | Total: ₹${o.total}`,
                   icon: '/vite.svg'
                 });
@@ -893,7 +893,7 @@ export default function AdminDashboard({ onNavigateToMenu }) {
                 )}
               </div>
               <p className="text-xs text-stone-400">
-                Vinayaka Restaurant (Rooftop & Lounge) &bull; Sector - 23, Ghaziabad
+                Hotel &bull; Sanjay Nagar, Ghaziabad
               </p>
             </div>
           </div>
@@ -1497,7 +1497,7 @@ export default function AdminDashboard({ onNavigateToMenu }) {
                       </span>
                     </div>
                     <p className="text-xs text-stone-400 mt-0.5">
-                      Vinayaka Restaurant (Rooftop & Lounge) &bull; Sector - 23, Ghaziabad
+                      Hotel &bull; Sanjay Nagar, Ghaziabad
                     </p>
                   </div>
                 </div>
@@ -2224,10 +2224,10 @@ export default function AdminDashboard({ onNavigateToMenu }) {
                 </div>
 
                 <h4 className="text-lg font-black text-white uppercase font-display">
-                  Vinayaka <span className="text-amber-400">Restaurant</span>
+                  <span className="text-amber-400">Hotel</span>
                 </h4>
                 <p className="text-[10px] text-stone-400">
-                  Rooftop & Lounge • Sector - 23, Ghaziabad
+                  Pure Veg Dining &bull; Sanjay Nagar, Ghaziabad
                 </p>
 
                 <div className="my-3 inline-block bg-gradient-to-r from-orange-600 to-amber-600 text-white font-black text-sm px-5 py-1 rounded-full shadow-glow-tandoor">

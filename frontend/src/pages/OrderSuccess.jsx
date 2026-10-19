@@ -59,13 +59,13 @@ export default function OrderSuccess({ initialOrder, onOrderMore }) {
   ];
 
   const handleShareWhatsApp = () => {
-    let msg = `⭐ *Order Placed at Vinayaka Restaurant (Rooftop & Lounge)* ⭐\n`;
+    let msg = `⭐ *Order Placed at Hotel* ⭐\n`;
     msg += `Order No: *${order.orderNumber}*\n`;
     msg += `Table: *${order.tableNumber ? `Table ${order.tableNumber}` : 'Takeaway'}*\n`;
     msg += `Total Amount: *₹${order.total?.toFixed(0)}*\n`;
-    msg += `Status: Cooking in Kitchen 🔥\n`;
-    msg += `Rating: ⭐ 4.4 (1.2K Reviews) • Vegetarian\n`;
-    msg += `Address: Rooftop & Lounge, Sector - 23, Ghaziabad`;
+    msg += `Status: Preparing in Kitchen 🔥\n`;
+    msg += `Quality: 100% Pure Vegetarian\n`;
+    msg += `Address: Sanjay Nagar, Ghaziabad`;
     window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
   };
 

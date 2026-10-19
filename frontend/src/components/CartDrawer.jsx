@@ -205,7 +205,7 @@ export default function CartDrawer({ onOrderSuccess }) {
       }
     } catch (e) {}
 
-    let text = `*⭐ NEW ORDER - VINAYAKA RESTAURANT (ROOFTOP & LOUNGE) ⭐*\n`;
+    let text = `*⭐ NEW ORDER - HOTEL ⭐*\n`;
     text += `-----------------------------------------\n`;
     text += `*Type:* ${orderType === 'DINE_IN' ? `Dine-In (Table ${tableNumber || 'Unassigned'})` : 'Takeaway / Parcel'}\n`;
     if (customerName.trim()) text += `*Customer:* ${customerName}\n`;

@@ -1,11 +1,11 @@
-// Complete Menu Data for Vinayaka Restaurant (Rooftop & Lounge)
-// Rating: 4.4 (1.2K) • ₹200–₹1,000 Vegetarian
+// Complete Menu Data for Hotel
+// 100% Pure Vegetarian Food & Dining
 
 export const RESTAURANT_INFO = {
-  name: "Vinayaka Restaurant (Rooftop & Lounge)",
-  shortName: "Vinayaka Restaurant",
-  tagline: "Premier Rooftop & Lounge Dining Experience",
-  subTagline: "⭐ 4.4 (1.2K Reviews) • ₹200–₹1,000 • 100% Pure Vegetarian",
+  name: "Hotel",
+  shortName: "Hotel",
+  tagline: "Pure Vegetarian Delicious Food & Dining Experience",
+  subTagline: "100% Pure Vegetarian Food & Fast Service",
   rating: "4.4",
   reviewsCount: "1.2K",
   priceRange: "₹200–₹1,000",

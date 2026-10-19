@@ -184,12 +184,11 @@ export default function CustomerMenu() {
               </div>
 
               <h1 className="text-2xl sm:text-4xl md:text-5xl font-black text-stone-100 font-display tracking-tight leading-tight">
-                Vinayaka <span className="text-gradient bg-gradient-to-r from-orange-400 via-amber-300 to-yellow-400 bg-clip-text text-transparent">Restaurant</span>
-                <span className="block text-xl sm:text-2xl text-amber-400 font-sans font-bold mt-0.5">(Rooftop & Lounge)</span>
+                <span className="text-gradient bg-gradient-to-r from-orange-400 via-amber-300 to-yellow-400 bg-clip-text text-transparent">Hotel</span>
               </h1>
 
               <p className="text-xs sm:text-base text-stone-300 font-normal leading-relaxed">
-                {RESTAURANT_INFO.tagline}. Authentic North Indian delicacies, sizzling starters, royal gravies, and exquisite rooftop lounge ambience.
+                {RESTAURANT_INFO.tagline}. Authentic North Indian delicacies, sizzling starters, royal gravies, and delicious pure veg dining.
               </p>
 
               {/* Badges / Location / Direct Actions */}
