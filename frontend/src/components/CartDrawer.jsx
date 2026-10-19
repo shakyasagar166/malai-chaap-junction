@@ -136,7 +136,7 @@ export default function CartDrawer({ onOrderSuccess }) {
   const handleWhatsAppOrder = () => {
     if (cart.length === 0) return;
 
-    let text = `*🍢 NEW ORDER - SVAD MALAI CHAAP JUNCTION 🍢*\n`;
+    let text = `*⭐ NEW ORDER - VINAYAKA RESTAURANT (ROOFTOP & LOUNGE) ⭐*\n`;
     text += `-----------------------------------------\n`;
     text += `*Type:* ${orderType === 'DINE_IN' ? `Dine-In (Table ${tableNumber || 'Unassigned'})` : 'Takeaway / Parcel'}\n`;
     if (customerName.trim()) text += `*Customer:* ${customerName}\n`;

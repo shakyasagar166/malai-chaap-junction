@@ -1,13 +1,15 @@
-// Complete Menu Data for Svad Malai Chaap Junction
-// Address: L-127, Sanjay Nagar, Sector - 23, Ghaziabad
-// Phone: 99-1101-3993, 89-2929-9898
+// Complete Menu Data for Vinayaka Restaurant (Rooftop & Lounge)
+// Rating: 4.4 (1.2K) • ₹200–₹1,000 Vegetarian
 
 export const RESTAURANT_INFO = {
-  name: "Svad Malai Chaap Junction",
-  shortName: "Malai Chaap Junction",
-  tagline: "Ghaziabad's Premier Tandoori & Chaap Specialities",
-  subTagline: "Asli Dilli-NCR Swad • 100% Pure Vegetarian",
-  address: "L-127, Sanjay Nagar, Sector - 23, Ghaziabad",
+  name: "Vinayaka Restaurant (Rooftop & Lounge)",
+  shortName: "Vinayaka Restaurant",
+  tagline: "Premier Rooftop & Lounge Dining Experience",
+  subTagline: "⭐ 4.4 (1.2K Reviews) • ₹200–₹1,000 • 100% Pure Vegetarian",
+  rating: "4.4",
+  reviewsCount: "1.2K",
+  priceRange: "₹200–₹1,000",
+  address: "Rooftop & Lounge, Sector - 23, Ghaziabad",
   phones: ["99-1101-3993", "89-2929-9898"],
   whatsapp: "919911013993",
   openingHours: "12:00 PM – 11:30 PM (Daily)",

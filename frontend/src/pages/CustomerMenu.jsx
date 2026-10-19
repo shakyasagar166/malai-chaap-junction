@@ -159,17 +159,27 @@ export default function CustomerMenu() {
             
             {/* Restaurant Info Card */}
             <div className="text-center md:text-left space-y-3 max-w-2xl">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-orange-950/80 border border-orange-500/30 text-orange-400 text-xs font-semibold uppercase tracking-wider">
-                <Flame className="w-3.5 h-3.5 text-orange-400" />
-                <span>Asli Swad • Authentic North Indian Delicacies</span>
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-xs font-bold tracking-wide">
+                <span className="flex items-center text-amber-400 font-black gap-1">
+                  ⭐ 4.4
+                </span>
+                <span className="text-stone-400 font-medium">(1.2K)</span>
+                <span className="w-1 h-1 rounded-full bg-stone-600"></span>
+                <span className="text-stone-200 font-semibold">₹200–1,000</span>
+                <span className="w-1 h-1 rounded-full bg-stone-600"></span>
+                <span className="text-emerald-400 font-bold flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                  Vegetarian
+                </span>
               </div>
 
               <h1 className="text-2xl sm:text-4xl md:text-5xl font-black text-stone-100 font-display tracking-tight leading-tight">
-                Svad <span className="text-gradient bg-gradient-to-r from-orange-400 via-amber-300 to-yellow-400 bg-clip-text text-transparent">Malai Chaap</span> Junction
+                Vinayaka <span className="text-gradient bg-gradient-to-r from-orange-400 via-amber-300 to-yellow-400 bg-clip-text text-transparent">Restaurant</span>
+                <span className="block text-xl sm:text-2xl text-amber-400 font-sans font-bold mt-0.5">(Rooftop & Lounge)</span>
               </h1>
 
               <p className="text-xs sm:text-base text-stone-300 font-normal leading-relaxed">
-                {RESTAURANT_INFO.tagline}. Melt-in-mouth creamy malai chaaps, sizzling roomali rolls, royal gravies, and tandoor breads.
+                {RESTAURANT_INFO.tagline}. Authentic North Indian delicacies, sizzling starters, royal gravies, and exquisite rooftop lounge ambience.
               </p>
 
               {/* Badges / Location / Direct Actions */}
@@ -291,7 +301,7 @@ export default function CustomerMenu() {
               <Search className="w-4 h-4 text-stone-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
-                placeholder="Search across all 137 dishes (e.g. Malai Chaap, Rumali, Dal Makhni)..."
+                placeholder="Search across all dishes (e.g. Paneer Tikka, Dal Makhani, Chaap, Naan)..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full bg-stone-900/90 border border-stone-800 focus:border-orange-500 rounded-2xl pl-10 pr-4 py-2.5 text-xs sm:text-sm text-stone-100 placeholder-stone-500 focus:outline-none transition shadow-inner"
@@ -385,7 +395,7 @@ export default function CustomerMenu() {
             <UtensilsCrossed className="w-12 h-12 text-stone-600 mx-auto mb-3" />
             <h3 className="text-lg font-bold text-stone-200 font-display">No dishes match your search</h3>
             <p className="text-xs text-stone-500 mt-1 max-w-sm mx-auto">
-              Try searching for "Malai Chaap", "Paneer Tikka", "Momos", "Naan" or choose another category.
+              Try searching for "Paneer Tikka", "Dal Makhani", "Chaap", "Naan" or choose another category.
             </p>
             <button
               onClick={() => { setSearchQuery(''); setActiveCategory('all'); setFilterType('all'); }}

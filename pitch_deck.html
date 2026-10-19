@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vinayaka Restaurant (Rooftop & Lounge) - Smart Dine-In Automation Pitch Deck</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background-color: #0b0f19;
+      color: #f3f4f6;
+    }
+    .font-cinzel {
+      font-family: 'Cinzel', serif;
+    }
+    .slide {
+      display: none;
+      opacity: 0;
+      transition: opacity 0.3s ease-in-out;
+    }
+    .slide.active {
+      display: flex;
+      opacity: 1;
+    }
+    .glass-card {
+      background: rgba(16, 22, 38, 0.85);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(245, 158, 11, 0.25);
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between selection:bg-amber-500 selection:text-black">
+
+  <!-- Top Bar Navigation -->
+  <header class="no-print border-b border-gray-800 bg-[#0d1222]/90 backdrop-blur px-4 sm:px-8 py-3 flex items-center justify-between sticky top-0 z-50">
+    <div class="flex items-center space-x-3">
+      <div class="w-9 h-9 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 font-bold text-lg">
+        ⭐
+      </div>
+      <div>
+        <h1 class="font-cinzel text-sm sm:text-base font-bold text-white tracking-wide">
+          Vinayaka Restaurant <span class="text-amber-400 text-xs font-sans">(Rooftop &amp; Lounge)</span>
+        </h1>
+        <p class="text-[10px] text-amber-400 font-semibold tracking-wider uppercase">
+          ⭐ 4.4 (1.2K Reviews) &bull; ₹200–1,000 &bull; Vegetarian
+        </p>
+      </div>
+    </div>
+
+    <!-- Slide Indicators & Controls -->
+    <div class="flex items-center space-x-2 sm:space-x-4">
+      <span id="slideCounter" class="text-xs font-mono font-bold text-amber-300 bg-black/50 px-3 py-1 rounded-full border border-gray-700">
+        Slide 1 / 10
+      </span>
+      <div class="flex items-center space-x-1.5">
+        <button onclick="prevSlide()" class="p-2 rounded-xl bg-gray-800 hover:bg-gray-700 text-white text-xs font-bold transition active:scale-95">
+          ◀ Prev
+        </button>
+        <button onclick="nextSlide()" class="px-3.5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-400 hover:to-yellow-300 text-black text-xs font-black transition active:scale-95 shadow">
+          Next ▶
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Slide Display Container -->
+  <main class="flex-1 flex items-center justify-center p-4 sm:p-8 max-w-6xl mx-auto w-full">
+
+    <!-- SLIDE 1: TITLE SLIDE -->
+    <section class="slide active flex-col items-center justify-center text-center space-y-6 w-full glass-card p-6 sm:p-12 rounded-3xl shadow-2xl">
+      <div class="inline-block px-4 py-1.5 rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-400 text-xs font-black tracking-widest uppercase">
+        ✦ ⭐ 4.4 (1.2K Reviews) &bull; ₹200–₹1,000 &bull; 100% PURE VEGETARIAN ROOFTOP &amp; LOUNGE ✦
+      </div>
+      <h2 class="font-cinzel text-3xl sm:text-5xl font-black text-white leading-tight">
+        Vinayaka Restaurant <br/>
+        <span class="text-amber-400 text-2xl sm:text-3xl font-sans font-bold">(Rooftop &amp; Lounge)</span>
+      </h2>
+      <p class="text-amber-200 text-base sm:text-xl font-bold max-w-3xl mx-auto leading-relaxed">
+        Smart Dine-In QR Ordering • Waiter Salary Savings • Kitchen Bell Chime • Daily Sales Report
+      </p>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 w-full max-w-4xl pt-4">
+        <div class="p-4 rounded-2xl bg-[#090d18] border border-amber-500/30 text-left">
+          <div class="text-2xl mb-1">💰</div>
+          <h4 class="font-bold text-amber-400 text-sm">Waiter Salary Bachat</h4>
+          <p class="text-xs text-gray-300 mt-1">1 Extra waiter ka kharcha kam (Har mahine ₹12,000+ bachat).</p>
+        </div>
+        <div class="p-4 rounded-2xl bg-[#090d18] border border-amber-500/30 text-left">
+          <div class="text-2xl mb-1">🛡️</div>
+          <h4 class="font-bold text-amber-400 text-sm">2-Step Seat Verify</h4>
+          <p class="text-xs text-gray-300 mt-1">Ghar baithe fake/prank orders se 100% bachat, khana barbad zero.</p>
+        </div>
+        <div class="p-4 rounded-2xl bg-[#090d18] border border-amber-500/30 text-left">
+          <div class="text-2xl mb-1">⚡</div>
+          <h4 class="font-bold text-amber-400 text-sm">20 Min Fast Table Turnover</h4>
+          <p class="text-xs text-gray-300 mt-1">Rush hour me rooftop table jaldi khali, zyada families baithengi, zyada kamai!</p>
+        </div>
+      </div>
+
+      <p class="text-xs text-gray-400 pt-4 border-t border-gray-800 w-full">
+        Specially Prepared for Restaurant Owner &bull; <strong>Vinayaka Restaurant (Rooftop &amp; Lounge) Management Team</strong>
+      </p>
+    </section>
+
+    <!-- SLIDE 2: PROBLEMS VS SOLUTIONS -->
+    <section class="slide flex-col space-y-5 w-full glass-card p-6 sm:p-10 rounded-3xl shadow-2xl">
+      <div class="flex items-center justify-between border-b border-gray-800 pb-3">
+        <div>
+          <span class="text-[11px] font-black text-amber-400 uppercase tracking-wider">Traditional vs Modern Dine-In</span>
+          <h3 class="font-cinzel text-xl sm:text-2xl font-bold text-white">Purane Paper Menu Ki Musibatein vs Smart QR System</h3>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <!-- Problems -->
+        <div class="p-5 rounded-2xl bg-red-950/30 border border-red-500/40 space-y-3">
+          <h4 class="text-red-400 font-bold text-base flex items-center gap-2">
+            <span>❌ Offline Restaurant Ki 5 Badi Dikkatain</span>
+          </h4>
+          <ul class="text-xs text-gray-300 space-y-2.5 leading-relaxed">
+            <li>• <strong>Extra Waiter Ka Bada Kharcha:</strong> Rush hour sambhalne ke liye 2-3 extra waiter rakhne padte hain (₹12,000/waiter salary).</li>
+            <li>• <strong>Gande Menu &amp; Reprint Kharcha:</strong> Gravy/tel se menu kharab hota hai. Rate badle to ₹3,000 reprint lagte hain.</li>
+            <li>• <strong>Order Likhne Me Waiter Ki Galti:</strong> Half ki jagah Full likha ya mirch bhool gaya - pura khana barbad!</li>
+            <li>• <strong>Rush Me Table Ghanton Block Rehna:</strong> Menu lane aur order likhne me shuru ke 20 minute waste hote hain.</li>
+            <li>• <strong>Grahakon Ka Koi Data Nahi:</strong> Jo family khakar gayi, unka koi phone number nahi rehta (repeat marketing impossible).</li>
+          </ul>
+        </div>
+
+        <!-- Solutions -->
+        <div class="p-5 rounded-2xl bg-emerald-950/30 border border-emerald-500/40 space-y-3">
+          <h4 class="text-emerald-400 font-bold text-base flex items-center gap-2">
+            <span>✅ Vinayaka Restaurant Smart QR Ke Fayde</span>
+          </h4>
+          <ul class="text-xs text-gray-300 space-y-2.5 leading-relaxed">
+            <li>• <strong>1 Waiter Sambhale 10 Tables:</strong> Customer khud photos dekhkar order karta hai. Extra waiter hire nahi karna padega!</li>
+            <li>• <strong>₹0 Zero Menu Reprint Kharcha:</strong> Rate badha, mobile se 5 second me update karo. Sabhi QR standees par live!</li>
+            <li>• <strong>100% Exact Order Kitchen Me:</strong> Customer ka portion aur chef instruction seedha kitchen display par jata hai.</li>
+            <li>• <strong>20 Minute Fast Table Turnover:</strong> Customer baithte hi 3 minute me order karta hai. Rooftop table jaldi khali hogi, zyada dhandha!</li>
+            <li>• <strong>Customer Mobile Directory:</strong> Har customer ka phone number auto-save hota hai. Holi, Diwali par WhatsApp offer bhejo!</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 3: FINANCIAL ROI -->
+    <section class="slide flex-col space-y-5 w-full glass-card p-6 sm:p-10 rounded-3xl shadow-2xl">
+      <div class="border-b border-gray-800 pb-3">
+        <span class="text-[11px] font-black text-amber-400 uppercase tracking-wider">Financial Breakdown</span>
+        <h3 class="font-cinzel text-xl sm:text-2xl font-bold text-white">Owner Ka Asli Hisaab: Har Mahine ₹45,000+ Ki Seedhi Bachat!</h3>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div class="p-4 rounded-2xl bg-[#0e1424] border border-amber-500/40 space-y-1">
+          <span class="text-xs font-bold text-amber-400">🧑‍🍳 Extra Waiter Salary Bachat</span>
+          <div class="text-xl sm:text-2xl font-black text-emerald-400">₹12,000 / Mahina</div>
+          <p class="text-xs text-gray-300">1 extra waiter/helper ki salary aur khana-peena bachega kyunki customer khud scan karke order karega.</p>
+        </div>
+        <div class="p-4 rounded-2xl bg-[#0e1424] border border-amber-500/40 space-y-1">
+          <span class="text-xs font-bold text-amber-400">📜 Menu Reprinting Bachat</span>
+          <div class="text-xl sm:text-2xl font-black text-emerald-400">₹3,000 / Mahina</div>
+          <p class="text-xs text-gray-300">Gande menu badalna ya rate change par nayi printing ka kharcha permanently ₹0 ho jayega.</p>
+        </div>
+        <div class="p-4 rounded-2xl bg-[#0e1424] border border-amber-500/40 space-y-1">
+          <span class="text-xs font-bold text-amber-400">⚡ Fast Table Turnover Extra Kamai</span>
+          <div class="text-xl sm:text-2xl font-black text-emerald-400">₹30,000 / Mahina</div>
+          <p class="text-xs text-gray-300">Rush hour me har rooftop table 20 minute jaldi khali hogi. Roz 2-3 extra families baithne se daily ₹1,000-₹1,500 extra bachega.</p>
+        </div>
+        <div class="p-4 rounded-2xl bg-[#0e1424] border border-amber-500/40 space-y-1">
+          <span class="text-xs font-bold text-amber-400">🛡️ Order Mistake Wastage Bachat</span>
+          <div class="text-xl sm:text-2xl font-black text-emerald-400">₹4,000 / Mahina</div>
+          <p class="text-xs text-gray-300">Waiter ki likhne ki galti khatam. Customer wahi payega jo usne khud select kiya hai.</p>
+        </div>
+      </div>
+
+      <div class="p-4 rounded-2xl bg-gradient-to-r from-emerald-950 to-green-950 border border-emerald-500 text-center font-bold text-sm text-emerald-200">
+        💡 Total Monthly Value: ₹45,000+ Net Profit &amp; Cost Savings Har Mahine!
+      </div>
+    </section>
+
+    <!-- SLIDE 4: 2-STEP SEAT VERIFICATION -->
+    <section class="slide flex-col space-y-5 w-full glass-card p-6 sm:p-10 rounded-3xl shadow-2xl">
+      <div class="border-b border-gray-800 pb-3">
+        <span class="text-[11px] font-black text-amber-400 uppercase tracking-wider">Owner's Biggest Concern Solved</span>
+        <h3 class="font-cinzel text-xl sm:text-2xl font-bold text-white">2-Step Seat Verification: 'Ghar Baithe Fake Order Ka Ilaaj'</h3>
+      </div>
+
+      <div class="p-4 rounded-2xl bg-gradient-to-r from-amber-500/20 to-yellow-500/20 border border-amber-500/50 space-y-1.5">
+        <h4 class="text-base font-black text-amber-300 flex items-center gap-2">
+          <span>🛡️ Khana Tabhi Banega Jab Staff Table Confirm Karega!</span>
+        </h4>
+        <p class="text-xs text-gray-200 leading-relaxed">
+          Agar koi shaitani customer QR code ki photo khinch kar ghar chala jaye aur wahan se prank order kare, to Vinayaka Restaurant (Rooftop &amp; Lounge) ko 1 rupaye ka bhi nuksan nahi hoga! Jab tak restaurant ka staff table par customer ko dekhkar 1-Click "Table par baithe hain" nahi karega, tab tak kitchen me khana banna shuru hi nahi hoga!
+        </p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="p-4 rounded-2xl bg-[#090d18] border border-gray-800 space-y-1.5">
+          <div class="text-amber-400 font-black text-sm">Step 1: Ghanti Baji 🔔</div>
+          <p class="text-xs text-gray-300">Counter aur staff ke phone par chime baji: 'Table 4 par Vinayaka Special Dal Makhani order hua'. Admin screen par golden alert aaya.</p>
+        </div>
+        <div class="p-4 rounded-2xl bg-[#090d18] border border-gray-800 space-y-1.5">
+          <div class="text-amber-400 font-black text-sm">Step 2: Table Check 👁️</div>
+          <p class="text-xs text-gray-300">Staff ne Table 4 (Rooftop/Lounge) par nazar daali ki sach me family/grahak baitha hai ya nahi.</p>
+        </div>
+        <div class="p-4 rounded-2xl bg-[#090d18] border border-emerald-500/50 space-y-1.5">
+          <div class="text-emerald-400 font-black text-sm">Step 3: 1-Click Decision ⚡</div>
+          <p class="text-xs text-gray-300">Family baithi hai to <strong>'Table par baithe hain (Accept)'</strong> dabao. Table khali hai to <strong>'Reject (Fake Order)'</strong> dabao!</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 5: KITCHEN BELL & REAL TIME -->
+    <section class="slide flex-col space-y-5 w-full glass-card p-6 sm:p-10 rounded-3xl shadow-2xl">
+      <div class="border-b border-gray-800 pb-3">
+        <span class="text-[11px] font-black text-amber-400 uppercase tracking-wider">Live Kitchen Audio &amp; Clock</span>
+        <h3 class="font-cinzel text-xl sm:text-2xl font-bold text-white">Kitchen Dining Chime Bell (Ding-Dong 🔔) &amp; IST Time</h3>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <div class="p-5 rounded-2xl bg-[#090d18] border border-amber-500/40 space-y-2.5">
+          <h4 class="text-base font-black text-amber-400 flex items-center gap-2">
+            <span>🔔 Noisy Kitchen Me Bhi Awaaz Saaf Aayegi</span>
+          </h4>
+          <ul class="text-xs text-gray-300 space-y-2 leading-relaxed">
+            <li>• <strong>Authentic Brass Desk Bell:</strong> Hotel service counter jaisi 2-cycle 'Ding-Dong ... Ding-Dong' chime bajti hai.</li>
+            <li>• <strong>Multi-Device Polling Engine:</strong> Customer rooftop table se order kare, counter ke laptop/phone par turant bell bajegi.</li>
+            <li>• <strong>Mobile Vibration Alert:</strong> Chef aur counter staff ke pocket me phone vibrate bhi hota hai taaki shor me bhi order miss na ho.</li>
+            <li>• <strong>1-Click 'Test Bell 🛎️' Button:</strong> Screen par test button diya hai, kabhi bhi sound check kar sakte hain.</li>
+          </ul>
+        </div>
+
+        <div class="p-5 rounded-2xl bg-[#090d18] border border-emerald-500/40 space-y-2.5">
+          <h4 class="text-base font-black text-emerald-400 flex items-center gap-2">
+            <span>⏰ Accurate Indian Time &amp; Instant Delete</span>
+          </h4>
+          <ul class="text-xs text-gray-300 space-y-2 leading-relaxed">
+            <li>• <strong>Exact 12-Hour Indian Local Time:</strong> Order card par saaf-saaf 'Time: 08:35 PM' dikhega, koi UTC/foreign lag nahi.</li>
+            <li>• <strong>Live Elapsed Timer:</strong> Card par dikhta hai: '2 min pehle', '5 min pehle' - waiter ko pata rehta hai kis table ko pehle khana dena hai.</li>
+            <li>• <strong>Instant Permanent Delete (🗑️):</strong> Cancelled ya test order ho, 1 click me permanently gayab ho jata hai.</li>
+            <li>• <strong>Live Status for Customer:</strong> Customer ke phone par status update hota hai: 'Pending -> Verified -> Cooking -> Served'.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 6: 1-CLICK STOCK & PRICE CONTROL -->
+    <section class="slide flex-col space-y-5 w-full glass-card p-6 sm:p-10 rounded-3xl shadow-2xl">
+      <div class="border-b border-gray-800 pb-3">
+        <span class="text-[11px] font-black text-amber-400 uppercase tracking-wider">Full Operational Freedom</span>
+        <h3 class="font-cinzel text-xl sm:text-2xl font-bold text-white">Stock &amp; Price Control: 5 Second Me Rate Badlo Ya Sold Out Karo</h3>
+      </div>
+
+      <div class="p-5 rounded-2xl bg-[#090d18] border border-amber-500/30 space-y-3">
+        <h4 class="text-base font-black text-amber-400">
+          🍲 Restaurant Owner Ko Kisi Ke Aage Haath Nahi Phailana Padega!
+        </h4>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs text-gray-300 leading-relaxed pt-2">
+          <div class="p-3.5 rounded-xl bg-black/60 border border-gray-800">
+            <strong class="text-amber-300 block text-sm mb-1">1-Click 'In Stock' / 'Sold Out' Toggle:</strong>
+            Shaam ko Paneer Tikka ya Dal Makhani khatam ho gayi? 1 click me 'Sold Out' mark karo. Customer mang hi nahi payega, naraz hone ka sawal hi nahi!
+          </div>
+          <div class="p-3.5 rounded-xl bg-black/60 border border-gray-800">
+            <strong class="text-amber-300 block text-sm mb-1">Instant Rate Edit (No Printing Cost):</strong>
+            Sabzi, tel, butter ya paneer mehenga hua? 5 second me rate update karo. Sabhi rooftop table ke QR me turant naya rate chalega.
+          </div>
+          <div class="p-3.5 rounded-xl bg-black/60 border border-gray-800">
+            <strong class="text-amber-300 block text-sm mb-1">Vinayaka Restaurant Menu Pre-Loaded:</strong>
+            Starters, Rooftop Lounge Specials, Tandoori Platters, Paneer Gravy, Chinese, Breads &amp; Desserts - saari dishes pre-seeded hain HD photos ke sath.
+          </div>
+          <div class="p-3.5 rounded-xl bg-black/60 border border-gray-800">
+            <strong class="text-amber-300 block text-sm mb-1">Chef's Special ⭐ Badges:</strong>
+            Aapki special dishes par 'Chef Special' badge dikhta hai jisse grahak zyada profitable dishes order karte hain.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 7: DAILY SALES & COST REPORT -->
+    <section class="slide flex-col space-y-5 w-full glass-card p-6 sm:p-10 rounded-3xl shadow-2xl">
+      <div class="border-b border-gray-800 pb-3">
+        <span class="text-[11px] font-black text-amber-400 uppercase tracking-wider">Business Analytics</span>
+        <h3 class="font-cinzel text-xl sm:text-2xl font-bold text-white">Daily Sales &amp; Cost Hisaab: Raat Ko Parchi Jodne Ki Chhutti!</h3>
+      </div>
+
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div class="p-3.5 rounded-2xl bg-[#090d18] border border-amber-500/30 text-center">
+          <div class="text-xl mb-1">📊</div>
+          <div class="font-bold text-xs text-amber-400">Total Daily Sale</div>
+          <div class="text-[11px] text-gray-300 mt-0.5">Rozana cash/UPI turnover</div>
+        </div>
+        <div class="p-3.5 rounded-2xl bg-[#090d18] border border-amber-500/30 text-center">
+          <div class="text-xl mb-1">🔢</div>
+          <div class="font-bold text-xs text-amber-400">Order Numbers</div>
+          <div class="text-[11px] text-gray-300 mt-0.5">Completed vs Cancelled</div>
+        </div>
+        <div class="p-3.5 rounded-2xl bg-[#090d18] border border-amber-500/30 text-center">
+          <div class="text-xl mb-1">🏆</div>
+          <div class="font-bold text-xs text-amber-400">Best-Selling Dishes</div>
+          <div class="text-[11px] text-gray-300 mt-0.5">Top-selling item analytics</div>
+        </div>
+        <div class="p-3.5 rounded-2xl bg-[#090d18] border border-amber-500/30 text-center">
+          <div class="text-xl mb-1">🖨️</div>
+          <div class="font-bold text-xs text-amber-400">1-Click Print &amp; PDF</div>
+          <div class="text-[11px] text-gray-300 mt-0.5">Raat ko daily report print</div>
+        </div>
+      </div>
+
+      <div class="p-4 rounded-2xl bg-[#090d18] border border-emerald-500/40 space-y-2">
+        <h4 class="text-sm font-black text-emerald-400">📈 Chori aur Gaban Par 100% Rok (Complete Transparency)</h4>
+        <p class="text-xs text-gray-300 leading-relaxed">
+          Har order ka digital Order-ID hota hai. Waiter bina bill dikhaye jeb me paisa nahi rakh sakta. Aur owner chahe restaurant me na ho — apne ghar ya gaadi me baithkar bhi apne mobile par live dekh sakta hai ki abhi restaurant me kitni sale chal rahi hai!
+        </p>
+      </div>
+    </section>
+
+    <!-- SLIDE 8: CUSTOMER DATA & WHATSAPP MARKETING -->
+    <section class="slide flex-col space-y-5 w-full glass-card p-6 sm:p-10 rounded-3xl shadow-2xl">
+      <div class="border-b border-gray-800 pb-3">
+        <span class="text-[11px] font-black text-amber-400 uppercase tracking-wider">Customer Loyalty &amp; Growth</span>
+        <h3 class="font-cinzel text-xl sm:text-2xl font-bold text-white">Grahakon Ka Mobile Database: Holi, Diwali &amp; Sunday Offers Bhejo!</h3>
+      </div>
+
+      <div class="p-5 rounded-2xl bg-[#090d18] border border-amber-500/30 space-y-3">
+        <h4 class="text-base font-black text-amber-400">
+          📱 Offline Restaurant Ka Sabse Bada Khazana: Grahak Ka Phone Number!
+        </h4>
+        <ul class="text-xs text-gray-300 space-y-2.5 leading-relaxed">
+          <li>• <strong>Auto-Save Customer Database:</strong> Har bar jab family order karti hai, unka Naam aur Mobile Number database me jud jata hai. 2 mahine me aapke paas 500-1,000 local parivaron ka data hoga.</li>
+          <li>• <strong>Diwali / New Year Festive Campaigns:</strong> Tyohar par sabhi grahakon ko 1 click me WhatsApp message bhejo: 'Vinayaka Restaurant (Rooftop &amp; Lounge) me Special Rooftop Paneer par 10% discount'.</li>
+          <li>• <strong>Repeat Footfall (Wapas Bulao):</strong> Jo grahak 1 mahine se nahi aaya, use automatically 'We Miss You' message bhejkar wapas attract karo.</li>
+          <li>• <strong>Zero Marketing Cost:</strong> Paper pamphlet chhapwana aur batwana band. Sidha grahak ke WhatsApp par direct promotion!</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- SLIDE 9: COMMERCIAL PRICING PLANS -->
+    <section class="slide flex-col space-y-5 w-full glass-card p-6 sm:p-10 rounded-3xl shadow-2xl">
+      <div class="border-b border-gray-800 pb-3">
+        <span class="text-[11px] font-black text-amber-400 uppercase tracking-wider">Flexible Pricing Plans</span>
+        <h3 class="font-cinzel text-xl sm:text-2xl font-bold text-white">Owner Ke Liye 2 Aasan Aur Kifayati Pricing Plans</h3>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <!-- Plan 1 -->
+        <div class="p-5 rounded-2xl bg-[#090d18] border-2 border-amber-400 space-y-3 shadow-xl">
+          <div class="inline-block px-3 py-1 rounded-full bg-amber-500/20 text-amber-300 text-xs font-black">
+            ⭐ RECOMMENDED FOR OWNER
+          </div>
+          <h4 class="text-lg font-black text-white">PLAN 1: One-Time Full Setup</h4>
+          <div class="text-2xl font-black text-emerald-400">₹12,000 - ₹15,000 (Ek Baar Me Pura Deal)</div>
+          <ul class="text-xs text-gray-300 space-y-1.5 leading-relaxed">
+            <li>✓ Pura System Setup &amp; Dishes Pre-Loaded Live</li>
+            <li>✓ Sabhi Rooftop Tables Ke QR Standee Printable PDF Files</li>
+            <li>✓ 1 Pura Saal Cloud Server &amp; Hosting FREE</li>
+            <li>✓ Waiter &amp; Staff Ki Complete Training</li>
+            <li>✓ 24/7 Peak Hours Emergency Support</li>
+            <li>✓ Next Year Se: Sirf ₹2,500/Saal Server Renewal</li>
+          </ul>
+        </div>
+
+        <!-- Plan 2 -->
+        <div class="p-5 rounded-2xl bg-[#090d18] border border-gray-700 space-y-3">
+          <div class="inline-block px-3 py-1 rounded-full bg-gray-800 text-gray-300 text-xs font-black">
+            💡 LOW-BUDGET MONTHLY
+          </div>
+          <h4 class="text-lg font-black text-white">PLAN 2: Monthly Maintenance AMC</h4>
+          <div class="text-2xl font-black text-emerald-400">₹999 / Mahina (Sirf ₹33/Din - Ek Chai Barabar!)</div>
+          <ul class="text-xs text-gray-300 space-y-1.5 leading-relaxed">
+            <li>✓ Chhota One-time Setup: Sirf ₹4,999</li>
+            <li>✓ Monthly ₹999 Me Cloud Server &amp; Uptime</li>
+            <li>✓ Database Cloud Backup 24/7 Surakshit</li>
+            <li>✓ Emergency Bug Fix &amp; Support Included</li>
+            <li>✓ Jab Chahe Band Ya Renew Kar Sakte Hain</li>
+            <li>✓ Owner Ki Jeb Par Shuru Me Koi Bojh Nahi</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 10: IMMEDIATE LAUNCH -->
+    <section class="slide flex-col space-y-5 w-full glass-card p-6 sm:p-10 rounded-3xl shadow-2xl">
+      <div class="border-b border-gray-800 pb-3">
+        <span class="text-[11px] font-black text-amber-400 uppercase tracking-wider">Ready to Roll</span>
+        <h3 class="font-cinzel text-xl sm:text-2xl font-bold text-white">Aage Ka Kadam: Sirf 24 Ghante Me Restaurant Live Karein!</h3>
+      </div>
+
+      <div class="p-5 rounded-2xl bg-[#090d18] border border-amber-500/40 space-y-3">
+        <h4 class="text-base font-black text-amber-400">
+          🚀 Implementation Plan (Bina Kisi Rukawat Ke Shuru Karein)
+        </h4>
+        <ul class="text-xs text-gray-300 space-y-2.5 leading-relaxed">
+          <li>✦ <strong>Day 1 - Table Standees Printing:</strong> Vinayaka Restaurant (Rooftop &amp; Lounge) ke premium acrylic table QR standees taiyar karke tables par lagana.</li>
+          <li>✦ <strong>Day 1 - 15 Minute Staff Training:</strong> Waiter aur counter staff ko 15 minute me samjhana (system itna aasan hai ki koi bhi 5 minute me seekh jata hai).</li>
+          <li>✦ <strong>Day 1 - Live Launch &amp; Trial:</strong> Same day dinner rush me system chalu karna aur pehle din se hi table turnover aur bachat ka asar dekhna.</li>
+          <li>✦ <strong>Ongoing Tech Support:</strong> Hum back-end par 24/7 active rahenge taaki restaurant ka kaam bilkul makhhan ki tarah chalta rahe.</li>
+        </ul>
+      </div>
+
+      <div class="text-center pt-2">
+        <div class="inline-block text-amber-300 font-bold text-sm bg-black/60 px-6 py-2.5 rounded-full border border-amber-500/40 shadow">
+          🎉 Chaliye Vinayaka Restaurant (Rooftop &amp; Lounge) ko Smart &amp; Profitable Banate Hain!
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Keyboard navigation hint & Footer -->
+  <footer class="no-print border-t border-gray-800 bg-[#0d1222]/80 px-4 py-2.5 text-center text-[11px] text-gray-400 flex items-center justify-between">
+    <span>Tip: Keyboard <strong>Left (◀)</strong> aur <strong>Right (▶)</strong> arrow keys se slides badal sakte hain.</span>
+    <span class="text-amber-400 font-bold">Vinayaka Restaurant (Rooftop &amp; Lounge) Pitch Deck</span>
+  </footer>
+
+  <script>
+    let currentSlide = 0;
+    const slides = document.querySelectorAll('.slide');
+    const counter = document.getElementById('slideCounter');
+
+    function showSlide(index) {
+      if (index < 0) index = 0;
+      if (index >= slides.length) index = slides.length - 1;
+
+      slides.forEach((s, idx) => {
+        s.classList.toggle('active', idx === index);
+      });
+      currentSlide = index;
+      counter.innerText = `Slide ${currentSlide + 1} / ${slides.length}`;
+    }
+
+    function nextSlide() {
+      if (currentSlide < slides.length - 1) {
+        showSlide(currentSlide + 1);
+      }
+    }
+
+    function prevSlide() {
+      if (currentSlide > 0) {
+        showSlide(currentSlide - 1);
+      }
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight' || e.key === ' ') {
+        nextSlide();
+      } else if (e.key === 'ArrowLeft') {
+        prevSlide();
+      }
+    });
+  </script>
+</body>
+</html>

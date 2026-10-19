@@ -78,11 +78,12 @@ export default function Navbar({ onNavigate, currentPage }) {
             </div>
             <div>
               <div className="flex items-center gap-1.5">
-                <span className="text-[10px] sm:text-xs font-black text-amber-400 uppercase tracking-widest font-display">SVAD</span>
+                <span className="text-[10px] sm:text-xs font-black text-amber-400 uppercase tracking-wider font-display">ROOFTOP & LOUNGE</span>
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" title="100% Pure Veg"></span>
+                <span className="text-[10px] text-amber-300 font-bold bg-amber-500/10 px-1 rounded border border-amber-500/20">⭐ 4.4 (1.2K)</span>
               </div>
               <h1 className="text-sm sm:text-lg font-black text-stone-100 tracking-tight font-display leading-none">
-                Malai Chaap <span className="text-gradient bg-gradient-to-r from-orange-400 via-amber-300 to-yellow-400 bg-clip-text text-transparent">Junction</span>
+                Vinayaka <span className="text-gradient bg-gradient-to-r from-orange-400 via-amber-300 to-yellow-400 bg-clip-text text-transparent">Restaurant</span>
               </h1>
             </div>
           </button>

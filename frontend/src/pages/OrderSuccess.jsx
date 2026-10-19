@@ -56,12 +56,13 @@ export default function OrderSuccess({ initialOrder, onOrderMore }) {
   ];
 
   const handleShareWhatsApp = () => {
-    let msg = `🍢 *Order Placed at Svad Malai Chaap Junction* 🍢\n`;
+    let msg = `⭐ *Order Placed at Vinayaka Restaurant (Rooftop & Lounge)* ⭐\n`;
     msg += `Order No: *${order.orderNumber}*\n`;
     msg += `Table: *${order.tableNumber ? `Table ${order.tableNumber}` : 'Takeaway'}*\n`;
     msg += `Total Amount: *₹${order.total?.toFixed(0)}*\n`;
     msg += `Status: Cooking in Kitchen 🔥\n`;
-    msg += `Address: L-127, Sanjay Nagar, Ghaziabad`;
+    msg += `Rating: ⭐ 4.4 (1.2K Reviews) • Vegetarian\n`;
+    msg += `Address: Rooftop & Lounge, Sector - 23, Ghaziabad`;
     window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
   };
 

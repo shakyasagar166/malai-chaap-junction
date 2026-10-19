@@ -105,7 +105,7 @@ export default function AdminLogin({ onLoginSuccess, onCancel }) {
           Admin &amp; Kitchen Login
         </h2>
         <p className="text-xs text-stone-400 mt-1 max-w-xs mx-auto">
-          Svad Malai Chaap Junction store management &amp; live kitchen orders.
+          Vinayaka Restaurant (Rooftop &amp; Lounge) store management &amp; live kitchen orders.
         </p>
 
         {/* Toggle Login Mode Tabs */}

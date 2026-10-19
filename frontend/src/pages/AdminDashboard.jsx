@@ -358,7 +358,7 @@ export default function AdminDashboard({ onNavigateToMenu }) {
             if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
               const o = freshOrders[0];
               try {
-                new Notification('🔔 Svad Malai Chaap: Naya Order!', {
+                new Notification('🔔 Vinayaka Restaurant: Naya Order!', {
                   body: `${o.orderType === 'DINE_IN' ? 'Table #' + (o.tableNumber || '-') : 'Takeaway'} | Total: ₹${o.total}`,
                   icon: '/vite.svg'
                 });
@@ -893,7 +893,7 @@ export default function AdminDashboard({ onNavigateToMenu }) {
                 )}
               </div>
               <p className="text-xs text-stone-400">
-                Svad Malai Chaap Junction &bull; Sanjay Nagar, Ghaziabad
+                Vinayaka Restaurant (Rooftop & Lounge) &bull; Sector - 23, Ghaziabad
               </p>
             </div>
           </div>
@@ -1497,7 +1497,7 @@ export default function AdminDashboard({ onNavigateToMenu }) {
                       </span>
                     </div>
                     <p className="text-xs text-stone-400 mt-0.5">
-                      Svad Malai Chaap Junction &bull; Sanjay Nagar, Sector - 23, Ghaziabad
+                      Vinayaka Restaurant (Rooftop & Lounge) &bull; Sector - 23, Ghaziabad
                     </p>
                   </div>
                 </div>
@@ -2220,14 +2220,14 @@ export default function AdminDashboard({ onNavigateToMenu }) {
                   <div className="w-8 h-8 rounded-xl bg-orange-600 flex items-center justify-center text-white">
                     <Flame className="w-5 h-5" />
                   </div>
-                  <span className="text-xs font-black text-amber-400">SVAD</span>
+                  <span className="text-xs font-black text-amber-400">ROOFTOP</span>
                 </div>
 
                 <h4 className="text-lg font-black text-white uppercase font-display">
-                  Malai Chaap <span className="text-amber-400">Junction</span>
+                  Vinayaka <span className="text-amber-400">Restaurant</span>
                 </h4>
                 <p className="text-[10px] text-stone-400">
-                  L-127, Sanjay Nagar, Ghaziabad
+                  Rooftop & Lounge • Sector - 23, Ghaziabad
                 </p>
 
                 <div className="my-3 inline-block bg-gradient-to-r from-orange-600 to-amber-600 text-white font-black text-sm px-5 py-1 rounded-full shadow-glow-tandoor">

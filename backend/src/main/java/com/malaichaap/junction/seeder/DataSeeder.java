@@ -30,9 +30,9 @@ public class DataSeeder implements CommandLineRunner {
         // Seed Restaurant Info
         if (infoRepo.count() == 0) {
             RestaurantInfo info = new RestaurantInfo();
-            info.setName("Svad Malai Chaap Junction");
-            info.setTagline("Ghaziabad's Premier Tandoori & Chaap Specialities - 100% Pure Veg");
-            info.setAddress("L-127, Sanjay Nagar, Sector - 23, Ghaziabad");
+            info.setName("Vinayaka Restaurant (Rooftop & Lounge)");
+            info.setTagline("Premier Rooftop & Lounge Dining - ⭐ 4.4 (1.2K) - ₹200–₹1,000 Vegetarian");
+            info.setAddress("Rooftop & Lounge, Sector - 23, Ghaziabad");
             info.setPhonePrimary("99-1101-3993");
             info.setPhoneSecondary("89-2929-9898");
             info.setWhatsappNumber("919911013993");
